@@ -35,7 +35,7 @@ If SSH to GitHub times out:
 
 ```bash
 gh auth setup-git -h github.com
-git push https://github.com/victorcode1/flow-music.git private/full-backup
+git push https://github.com/victorcode1/stream-beat.git private/full-backup
 ```
 
 Never push these private backup changes to `organization`.
@@ -97,8 +97,8 @@ git clone radio-bundles/radiobrowser-web-angular.bundle radiobrowser-web-angular
 First clone the private Flow Music backup:
 
 ```bash
-git clone git@github.com:victorcode1/flow-music.git
-cd flow-music
+git clone git@github.com:victorcode1/stream-beat.git
+cd stream-beat
 git checkout private/full-backup
 ```
 
