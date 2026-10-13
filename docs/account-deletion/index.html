@@ -1,101 +1,269 @@
 <!doctype html>
 <html lang="es">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Cómo eliminar una cuenta de StreamBeat y sus datos asociados">
-  <title>Eliminar cuenta · StreamBeat</title>
-  <style>
-    :root { color-scheme: dark; --accent: #18d6be; --bg: #071019; --panel: #0d1824; --text: #eef6f7; --muted: #a7b6c1; --line: #21303d; }
-    * { box-sizing: border-box; }
-    body { margin: 0; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: linear-gradient(180deg, #0c2029 0, var(--bg) 420px); color: var(--text); line-height: 1.68; }
-    header, main, footer { width: min(820px, calc(100% - 40px)); margin-inline: auto; }
-    header { padding: 52px 0 36px; }
-    .brand { display: flex; align-items: center; gap: 14px; color: var(--text); text-decoration: none; font-weight: 800; }
-    .brand img { width: 46px; height: 46px; border-radius: 13px; }
-    h1 { margin: 46px 0 10px; font-size: clamp(2.35rem, 7vw, 4.5rem); line-height: 1; letter-spacing: -.055em; }
-    .updated { color: var(--accent); font-weight: 700; }
-    .language-nav { display: flex; gap: 10px; margin-top: 30px; }
-    .language-nav a { color: var(--text); border: 1px solid var(--line); border-radius: 999px; padding: 8px 15px; text-decoration: none; }
-    section { margin: 0 0 28px; padding: clamp(24px, 5vw, 42px); border: 1px solid var(--line); border-radius: 26px; background: rgba(13,24,36,.92); }
-    h2 { margin: 0 0 22px; font-size: 1.8rem; letter-spacing: -.025em; }
-    h3 { margin: 28px 0 8px; color: var(--accent); font-size: 1.05rem; }
-    p, li { color: var(--muted); }
-    p { margin: 0 0 14px; }
-    ol, ul { margin: 10px 0 0; padding-left: 24px; }
-    li + li { margin-top: 10px; }
-    a { color: var(--accent); }
-    footer { padding: 10px 0 60px; color: #718390; font-size: .92rem; }
-  </style>
-</head>
-<body>
-  <header>
-    <a class="brand" href="../"><img src="../assets/icon.png" alt="StreamBeat"><span>StreamBeat</span></a>
-    <h1>Eliminar cuenta</h1>
-    <div class="updated">StreamBeat · Victor Flores</div>
-    <nav class="language-nav" aria-label="Idioma"><a href="#es">Español</a><a href="#en">English</a></nav>
-  </header>
-  <main>
-    <section id="es" lang="es">
-      <h2>Eliminar tu cuenta y datos</h2>
-      <p>Puedes eliminar tu cuenta de StreamBeat directamente desde la aplicación.</p>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Cómo eliminar una cuenta de StreamBeat y sus datos asociados"
+    />
+    <title>Eliminar cuenta · StreamBeat</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --accent: #18d6be;
+        --bg: #071019;
+        --panel: #0d1824;
+        --text: #eef6f7;
+        --muted: #a7b6c1;
+        --line: #21303d;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family:
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+        background: linear-gradient(180deg, #0c2029 0, var(--bg) 420px);
+        color: var(--text);
+        line-height: 1.68;
+      }
+      header,
+      main,
+      footer {
+        width: min(820px, calc(100% - 40px));
+        margin-inline: auto;
+      }
+      header {
+        padding: 52px 0 36px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        color: var(--text);
+        text-decoration: none;
+        font-weight: 800;
+      }
+      .brand img {
+        width: 46px;
+        height: 46px;
+        border-radius: 13px;
+      }
+      h1 {
+        margin: 46px 0 10px;
+        font-size: clamp(2.35rem, 7vw, 4.5rem);
+        line-height: 1;
+        letter-spacing: -0.055em;
+      }
+      .updated {
+        color: var(--accent);
+        font-weight: 700;
+      }
+      .language-nav {
+        display: flex;
+        gap: 10px;
+        margin-top: 30px;
+      }
+      .language-nav a {
+        color: var(--text);
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 8px 15px;
+        text-decoration: none;
+      }
+      section {
+        margin: 0 0 28px;
+        padding: clamp(24px, 5vw, 42px);
+        border: 1px solid var(--line);
+        border-radius: 26px;
+        background: rgba(13, 24, 36, 0.92);
+      }
+      h2 {
+        margin: 0 0 22px;
+        font-size: 1.8rem;
+        letter-spacing: -0.025em;
+      }
+      h3 {
+        margin: 28px 0 8px;
+        color: var(--accent);
+        font-size: 1.05rem;
+      }
+      p,
+      li {
+        color: var(--muted);
+      }
+      p {
+        margin: 0 0 14px;
+      }
+      ol,
+      ul {
+        margin: 10px 0 0;
+        padding-left: 24px;
+      }
+      li + li {
+        margin-top: 10px;
+      }
+      a {
+        color: var(--accent);
+      }
+      footer {
+        padding: 10px 0 60px;
+        color: #718390;
+        font-size: 0.92rem;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <a class="brand" href="../"
+        ><img src="../assets/icon.png" alt="StreamBeat" /><span
+          >StreamBeat</span
+        ></a
+      >
+      <h1>Eliminar cuenta</h1>
+      <div class="updated">StreamBeat · Victor Flores</div>
+      <nav class="language-nav" aria-label="Idioma">
+        <a href="#es">Español</a><a href="#en">English</a>
+      </nav>
+    </header>
+    <main>
+      <section id="es" lang="es">
+        <h2>Eliminar tu cuenta y datos</h2>
+        <p>
+          Puedes eliminar tu cuenta de StreamBeat directamente desde la
+          aplicación.
+        </p>
 
-      <h3>Pasos</h3>
-      <ol>
-        <li>Abre StreamBeat e inicia sesión.</li>
-        <li>Ve a <strong>Configuración</strong> y abre la sección de tu cuenta o del acceso Premium sin anuncios.</li>
-        <li>Selecciona <strong>Eliminar cuenta</strong>.</li>
-        <li>Confirma la eliminación cuando la aplicación te lo solicite.</li>
-      </ol>
+        <h3>Pasos</h3>
+        <ol>
+          <li>Abre StreamBeat e inicia sesión.</li>
+          <li>
+            Ve a <strong>Configuración</strong> y abre la sección de tu cuenta o
+            del acceso Premium sin anuncios.
+          </li>
+          <li>Selecciona <strong>Eliminar cuenta</strong>.</li>
+          <li>Confirma la eliminación cuando la aplicación te lo solicite.</li>
+        </ol>
 
-      <h3>Datos que se eliminan</h3>
-      <ul>
-        <li>La cuenta de autenticación de StreamBeat.</li>
-        <li>El correo electrónico, nombre opcional y perfil asociado almacenados en Supabase.</li>
-        <li>El vínculo entre tu identificador de usuario y el estado de compra Premium almacenado por StreamBeat.</li>
-      </ul>
+        <h3>Datos que se eliminan</h3>
+        <ul>
+          <li>La cuenta de autenticación de StreamBeat.</li>
+          <li>
+            El correo electrónico, nombre opcional y perfil asociado almacenados
+            en Supabase.
+          </li>
+          <li>
+            El vínculo entre tu identificador de usuario y el estado de compra
+            Premium almacenado por StreamBeat.
+          </li>
+        </ul>
 
-      <h3>Datos que pueden conservarse</h3>
-      <p>Google Play, Apple y RevenueCat pueden conservar registros de transacciones, suscripciones y compras de por vida cuando sean necesarios para facturación, prevención de fraude, obligaciones legales o restauración de compras. Los plazos dependen de las políticas de esos proveedores. Los datos guardados localmente en el dispositivo se eliminan al borrar los datos de la app o desinstalarla.</p>
+        <h3>Datos que pueden conservarse</h3>
+        <p>
+          Google Play, Apple y RevenueCat pueden conservar registros de
+          transacciones, suscripciones y compras de por vida cuando sean
+          necesarios para facturación, prevención de fraude, obligaciones
+          legales o restauración de compras. Los plazos dependen de las
+          políticas de esos proveedores. Los datos guardados localmente en el
+          dispositivo se eliminan al borrar los datos de la app o desinstalarla.
+        </p>
 
-      <h3>Importante sobre las compras Premium</h3>
-      <p>Eliminar la cuenta de StreamBeat no cancela una suscripción mensual activa. Cancélala por separado desde Google Play o App Store para evitar renovaciones futuras. La tienda puede conservar el registro de una compra de por vida para su restauración según sus políticas.</p>
-      <p>La biblioteca actual se guarda solo en este dispositivo. Cerrar sesión conserva su copia local por cuenta; eliminar la cuenta también borra su biblioteca local. Si existen copias remotas de versiones anteriores, la eliminación de la cuenta las elimina por cascada. Esta versión no guarda ni recupera la biblioteca en la nube.</p>
+        <h3>Importante sobre las compras Premium</h3>
+        <p>
+          Eliminar la cuenta de StreamBeat no cancela una suscripción mensual
+          activa. Cancélala por separado desde Google Play o App Store para
+          evitar renovaciones futuras. La tienda puede conservar el registro de
+          una compra de por vida para su restauración según sus políticas.
+        </p>
+        <p>
+          La biblioteca actual se guarda solo en este dispositivo. Cerrar sesión
+          conserva su copia local por cuenta; eliminar la cuenta también borra
+          su biblioteca local. Si existen copias remotas de versiones
+          anteriores, la eliminación de la cuenta las elimina por cascada. Esta
+          versión no guarda ni recupera la biblioteca en la nube.
+        </p>
 
-      <h3>Si no puedes acceder a la aplicación</h3>
-      <p>Solicita asistencia mediante el <a href="https://github.com/victorcode1/flow-music/issues">canal oficial de soporte de StreamBeat</a>. No publiques contraseñas, datos bancarios ni otra información sensible.</p>
-    </section>
+        <h3>Si no puedes acceder a la aplicación</h3>
+        <p>
+          Solicita asistencia mediante el
+          <a href="https://github.com/victorcode1/stream-beat/issues"
+            >canal oficial de soporte de StreamBeat</a
+          >. No publiques contraseñas, datos bancarios ni otra información
+          sensible.
+        </p>
+      </section>
 
-    <section id="en" lang="en">
-      <h2>Delete your account and data</h2>
-      <p>You can delete your StreamBeat account directly from the app.</p>
+      <section id="en" lang="en">
+        <h2>Delete your account and data</h2>
+        <p>You can delete your StreamBeat account directly from the app.</p>
 
-      <h3>Steps</h3>
-      <ol>
-        <li>Open StreamBeat and sign in.</li>
-        <li>Go to <strong>Settings</strong> and open your account or ad-free Premium section.</li>
-        <li>Select <strong>Delete account</strong>.</li>
-        <li>Confirm deletion when prompted by the app.</li>
-      </ol>
+        <h3>Steps</h3>
+        <ol>
+          <li>Open StreamBeat and sign in.</li>
+          <li>
+            Go to <strong>Settings</strong> and open your account or ad-free
+            Premium section.
+          </li>
+          <li>Select <strong>Delete account</strong>.</li>
+          <li>Confirm deletion when prompted by the app.</li>
+        </ol>
 
-      <h3>Data that is deleted</h3>
-      <ul>
-        <li>Your StreamBeat authentication account.</li>
-        <li>Your email address, optional display name, and associated profile stored in Supabase.</li>
-        <li>The link between your user identifier and Premium purchase status stored by StreamBeat.</li>
-      </ul>
+        <h3>Data that is deleted</h3>
+        <ul>
+          <li>Your StreamBeat authentication account.</li>
+          <li>
+            Your email address, optional display name, and associated profile
+            stored in Supabase.
+          </li>
+          <li>
+            The link between your user identifier and Premium purchase status
+            stored by StreamBeat.
+          </li>
+        </ul>
 
-      <h3>Data that may be retained</h3>
-      <p>Google Play, Apple, and RevenueCat may retain transaction, subscription, and lifetime purchase records when required for billing, fraud prevention, legal obligations, or purchase restoration. Retention periods depend on those providers' policies. Data stored locally on the device is removed when you clear the app's data or uninstall it.</p>
+        <h3>Data that may be retained</h3>
+        <p>
+          Google Play, Apple, and RevenueCat may retain transaction,
+          subscription, and lifetime purchase records when required for billing,
+          fraud prevention, legal obligations, or purchase restoration.
+          Retention periods depend on those providers' policies. Data stored
+          locally on the device is removed when you clear the app's data or
+          uninstall it.
+        </p>
 
-      <h3>Important Premium purchase note</h3>
-      <p>Deleting your StreamBeat account does not cancel an active monthly subscription. Cancel it separately through Google Play or the App Store to prevent future renewals. The store may retain a lifetime purchase record for restoration according to its policies.</p>
-      <p>The current library is stored only on this device. Signing out preserves the account-scoped local copy; deleting the account also removes its local library. If backups from earlier versions exist remotely, account deletion removes them through cascading deletion. This version does not store or restore the library in the cloud.</p>
+        <h3>Important Premium purchase note</h3>
+        <p>
+          Deleting your StreamBeat account does not cancel an active monthly
+          subscription. Cancel it separately through Google Play or the App
+          Store to prevent future renewals. The store may retain a lifetime
+          purchase record for restoration according to its policies.
+        </p>
+        <p>
+          The current library is stored only on this device. Signing out
+          preserves the account-scoped local copy; deleting the account also
+          removes its local library. If backups from earlier versions exist
+          remotely, account deletion removes them through cascading deletion.
+          This version does not store or restore the library in the cloud.
+        </p>
 
-      <h3>If you cannot access the app</h3>
-      <p>Request help through the <a href="https://github.com/victorcode1/flow-music/issues">official StreamBeat support channel</a>. Do not publish passwords, banking details, or other sensitive information.</p>
-    </section>
-  </main>
-  <footer><a href="../">← StreamBeat</a><br>© 2026 StreamBeat</footer>
-</body>
+        <h3>If you cannot access the app</h3>
+        <p>
+          Request help through the
+          <a href="https://github.com/victorcode1/stream-beat/issues"
+            >official StreamBeat support channel</a
+          >. Do not publish passwords, banking details, or other sensitive
+          information.
+        </p>
+      </section>
+    </main>
+    <footer><a href="../">← StreamBeat</a><br />© 2026 StreamBeat</footer>
+  </body>
 </html>

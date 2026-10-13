@@ -2,40 +2,40 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
         xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
-    <loc>https://victorcode1.github.io/flow-music/</loc>
+    <loc>https://victorcode1.github.io/stream-beat/</loc>
     <lastmod>2026-08-26</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
-    <xhtml:link rel="alternate" hreflang="es-419" href="https://victorcode1.github.io/flow-music/"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://victorcode1.github.io/flow-music/en/"/>
-    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://victorcode1.github.io/flow-music/pt-br/"/>
+    <xhtml:link rel="alternate" hreflang="es-419" href="https://victorcode1.github.io/stream-beat/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://victorcode1.github.io/stream-beat/en/"/>
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://victorcode1.github.io/stream-beat/pt-br/"/>
   </url>
   <url>
-    <loc>https://victorcode1.github.io/flow-music/en/</loc>
+    <loc>https://victorcode1.github.io/stream-beat/en/</loc>
     <lastmod>2026-08-26</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
-    <xhtml:link rel="alternate" hreflang="es-419" href="https://victorcode1.github.io/flow-music/"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://victorcode1.github.io/flow-music/en/"/>
-    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://victorcode1.github.io/flow-music/pt-br/"/>
+    <xhtml:link rel="alternate" hreflang="es-419" href="https://victorcode1.github.io/stream-beat/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://victorcode1.github.io/stream-beat/en/"/>
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://victorcode1.github.io/stream-beat/pt-br/"/>
   </url>
   <url>
-    <loc>https://victorcode1.github.io/flow-music/pt-br/</loc>
+    <loc>https://victorcode1.github.io/stream-beat/pt-br/</loc>
     <lastmod>2026-08-26</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
-    <xhtml:link rel="alternate" hreflang="es-419" href="https://victorcode1.github.io/flow-music/"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://victorcode1.github.io/flow-music/en/"/>
-    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://victorcode1.github.io/flow-music/pt-br/"/>
+    <xhtml:link rel="alternate" hreflang="es-419" href="https://victorcode1.github.io/stream-beat/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://victorcode1.github.io/stream-beat/en/"/>
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://victorcode1.github.io/stream-beat/pt-br/"/>
   </url>
   <url>
-    <loc>https://victorcode1.github.io/flow-music/privacy/</loc>
+    <loc>https://victorcode1.github.io/stream-beat/privacy/</loc>
     <lastmod>2026-08-26</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.4</priority>
   </url>
   <url>
-    <loc>https://victorcode1.github.io/flow-music/account-deletion/</loc>
+    <loc>https://victorcode1.github.io/stream-beat/account-deletion/</loc>
     <lastmod>2026-08-26</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.3</priority>

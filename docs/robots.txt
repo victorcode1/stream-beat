@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://victorcode1.github.io/flow-music/sitemap.xml
+Sitemap: https://victorcode1.github.io/stream-beat/sitemap.xml

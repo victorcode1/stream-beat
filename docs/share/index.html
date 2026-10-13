@@ -1,100 +1,225 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Abre una emisora compartida en StreamBeat.">
-  <meta name="robots" content="noindex,follow">
-  <meta name="theme-color" content="#071019">
-  <link rel="icon" href="../assets/icon.png">
-  <link rel="apple-touch-icon" href="../assets/icon.png">
-  <meta property="og:type" content="website">
-  <meta property="og:site_name" content="StreamBeat">
-  <meta property="og:locale" content="es_419">
-  <meta property="og:locale:alternate" content="en_US">
-  <meta property="og:locale:alternate" content="pt_BR">
-  <meta property="og:title" content="Te compartieron una emisora en StreamBeat">
-  <meta property="og:description" content="Abre StreamBeat y empieza a escuchar esta radio en vivo.">
-  <meta property="og:image" content="https://victorcode1.github.io/flow-music/assets/icon.png">
-  <meta property="og:image:alt" content="Icono de StreamBeat">
-  <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="Escucha una emisora en StreamBeat">
-  <meta name="twitter:description" content="Descubre radio en vivo de todo el mundo.">
-  <meta name="twitter:image" content="https://victorcode1.github.io/flow-music/assets/icon.png">
-  <title>Emisora compartida · StreamBeat</title>
-  <style>
-    :root { color-scheme: dark; --accent: #18d6be; --panel: #101c2a; --muted: #9dafbd; }
-    * { box-sizing: border-box; }
-    body { margin: 0; min-height: 100vh; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: radial-gradient(circle at 15% 0%, #0e4a50 0, #08111b 42%, #050a10 100%); color: #f7fbfc; }
-    main { width: min(680px, calc(100% - 40px)); min-height: 100vh; margin: auto; display: grid; place-items: center; padding: 48px 0; }
-    article { width: 100%; padding: clamp(28px, 7vw, 60px); text-align: center; border: 1px solid rgba(255,255,255,.1); border-radius: 34px; background: rgba(9,20,31,.86); box-shadow: 0 28px 90px rgba(0,0,0,.35); }
-    img { width: 82px; height: 82px; border-radius: 23px; box-shadow: 0 14px 36px rgba(24,214,190,.24); }
-    h1 { margin: 30px 0 14px; font-size: clamp(2rem, 7vw, 3.7rem); line-height: 1; letter-spacing: -.055em; }
-    p { margin: 0 auto; max-width: 480px; color: var(--muted); font-size: 1.1rem; line-height: 1.65; }
-    nav { display: grid; gap: 12px; max-width: 360px; margin: 34px auto 0; }
-    a { display: grid; place-items: center; min-height: 54px; padding: 0 22px; border-radius: 999px; color: #06120f; background: var(--accent); font-weight: 800; text-decoration: none; }
-    a.secondary { color: #eaf4f5; background: var(--panel); border: 1px solid rgba(255,255,255,.12); }
-    a[aria-disabled="true"] { opacity: .45; pointer-events: none; }
-    footer { margin-top: 32px; color: #6e828f; font-size: .88rem; }
-  </style>
-</head>
-<body>
-  <main>
-    <article>
-      <img src="../assets/icon.png" alt="StreamBeat">
-      <h1 id="title">Te compartieron una emisora</h1>
-      <p id="description">Ábrela en StreamBeat y empieza a escucharla en vivo.</p>
-      <nav aria-label="Acciones">
-        <a id="open-app" href="#">Abrir en StreamBeat</a>
-        <a id="install-app" class="secondary" href="https://play.google.com/store/apps/details?id=com.victorflores.streambeat&amp;referrer=utm_source%3Dstation_share%26utm_medium%3Dreferral%26utm_campaign%3Dorganic_sharing">Instalar desde Google Play</a>
-      </nav>
-      <footer>StreamBeat · Radio en vivo de todo el mundo</footer>
-    </article>
-  </main>
-  <script>
-    (() => {
-      const storeUrl = 'https://play.google.com/store/apps/details?id=com.victorflores.streambeat&referrer=utm_source%3Dstation_share%26utm_medium%3Dreferral%26utm_campaign%3Dorganic_sharing';
-      const stationId = new URLSearchParams(window.location.search).get('station') || '';
-      const validStationId = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(stationId);
-      const language = (navigator.language || '').toLowerCase();
-      const english = language.startsWith('en');
-      const portuguese = language.startsWith('pt');
-      const openButton = document.getElementById('open-app');
-
-      if (english) {
-        document.documentElement.lang = 'en';
-        document.title = 'Shared station · StreamBeat';
-        document.getElementById('title').textContent = 'Someone shared a station with you';
-        document.getElementById('description').textContent = 'Open it in StreamBeat and start listening live.';
-        openButton.textContent = 'Open in StreamBeat';
-        document.getElementById('install-app').textContent = 'Get it on Google Play';
-      } else if (portuguese) {
-        document.documentElement.lang = 'pt-BR';
-        document.title = 'Estação compartilhada · StreamBeat';
-        document.getElementById('title').textContent = 'Compartilharam uma estação com você';
-        document.getElementById('description').textContent = 'Abra no StreamBeat e comece a ouvir ao vivo.';
-        openButton.textContent = 'Abrir no StreamBeat';
-        document.getElementById('install-app').textContent = 'Instalar pelo Google Play';
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Abre una emisora compartida en StreamBeat."
+    />
+    <meta name="robots" content="noindex,follow" />
+    <meta name="theme-color" content="#071019" />
+    <link rel="icon" href="../assets/icon.png" />
+    <link rel="apple-touch-icon" href="../assets/icon.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="StreamBeat" />
+    <meta property="og:locale" content="es_419" />
+    <meta property="og:locale:alternate" content="en_US" />
+    <meta property="og:locale:alternate" content="pt_BR" />
+    <meta
+      property="og:title"
+      content="Te compartieron una emisora en StreamBeat"
+    />
+    <meta
+      property="og:description"
+      content="Abre StreamBeat y empieza a escuchar esta radio en vivo."
+    />
+    <meta
+      property="og:image"
+      content="https://victorcode1.github.io/stream-beat/assets/icon.png"
+    />
+    <meta property="og:image:alt" content="Icono de StreamBeat" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Escucha una emisora en StreamBeat" />
+    <meta
+      name="twitter:description"
+      content="Descubre radio en vivo de todo el mundo."
+    />
+    <meta
+      name="twitter:image"
+      content="https://victorcode1.github.io/stream-beat/assets/icon.png"
+    />
+    <title>Emisora compartida · StreamBeat</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --accent: #18d6be;
+        --panel: #101c2a;
+        --muted: #9dafbd;
       }
-
-      if (!validStationId) {
-        openButton.setAttribute('aria-disabled', 'true');
-        document.getElementById('description').textContent = english
-          ? 'This shared station link is not valid, but you can still install StreamBeat.'
-          : portuguese
-            ? 'Este link de estação não é válido, mas você ainda pode instalar o StreamBeat.'
-            : 'Este enlace de emisora no es válido, pero aún puedes instalar StreamBeat.';
-        return;
+      * {
+        box-sizing: border-box;
       }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family:
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+        background: radial-gradient(
+          circle at 15% 0%,
+          #0e4a50 0,
+          #08111b 42%,
+          #050a10 100%
+        );
+        color: #f7fbfc;
+      }
+      main {
+        width: min(680px, calc(100% - 40px));
+        min-height: 100vh;
+        margin: auto;
+        display: grid;
+        place-items: center;
+        padding: 48px 0;
+      }
+      article {
+        width: 100%;
+        padding: clamp(28px, 7vw, 60px);
+        text-align: center;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 34px;
+        background: rgba(9, 20, 31, 0.86);
+        box-shadow: 0 28px 90px rgba(0, 0, 0, 0.35);
+      }
+      img {
+        width: 82px;
+        height: 82px;
+        border-radius: 23px;
+        box-shadow: 0 14px 36px rgba(24, 214, 190, 0.24);
+      }
+      h1 {
+        margin: 30px 0 14px;
+        font-size: clamp(2rem, 7vw, 3.7rem);
+        line-height: 1;
+        letter-spacing: -0.055em;
+      }
+      p {
+        margin: 0 auto;
+        max-width: 480px;
+        color: var(--muted);
+        font-size: 1.1rem;
+        line-height: 1.65;
+      }
+      nav {
+        display: grid;
+        gap: 12px;
+        max-width: 360px;
+        margin: 34px auto 0;
+      }
+      a {
+        display: grid;
+        place-items: center;
+        min-height: 54px;
+        padding: 0 22px;
+        border-radius: 999px;
+        color: #06120f;
+        background: var(--accent);
+        font-weight: 800;
+        text-decoration: none;
+      }
+      a.secondary {
+        color: #eaf4f5;
+        background: var(--panel);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+      }
+      a[aria-disabled="true"] {
+        opacity: 0.45;
+        pointer-events: none;
+      }
+      footer {
+        margin-top: 32px;
+        color: #6e828f;
+        font-size: 0.88rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <article>
+        <img src="../assets/icon.png" alt="StreamBeat" />
+        <h1 id="title">Te compartieron una emisora</h1>
+        <p id="description">
+          Ábrela en StreamBeat y empieza a escucharla en vivo.
+        </p>
+        <nav aria-label="Acciones">
+          <a id="open-app" href="#">Abrir en StreamBeat</a>
+          <a
+            id="install-app"
+            class="secondary"
+            href="https://play.google.com/store/apps/details?id=com.victorflores.streambeat&amp;referrer=utm_source%3Dstation_share%26utm_medium%3Dreferral%26utm_campaign%3Dorganic_sharing"
+            >Instalar desde Google Play</a
+          >
+        </nav>
+        <footer>StreamBeat · Radio en vivo de todo el mundo</footer>
+      </article>
+    </main>
+    <script>
+      (() => {
+        const storeUrl =
+          "https://play.google.com/store/apps/details?id=com.victorflores.streambeat&referrer=utm_source%3Dstation_share%26utm_medium%3Dreferral%26utm_campaign%3Dorganic_sharing";
+        const stationId =
+          new URLSearchParams(window.location.search).get("station") || "";
+        const validStationId =
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+            stationId,
+          );
+        const language = (navigator.language || "").toLowerCase();
+        const english = language.startsWith("en");
+        const portuguese = language.startsWith("pt");
+        const openButton = document.getElementById("open-app");
 
-      openButton.href = `streambeat://open/station?id=${encodeURIComponent(stationId)}`;
-      openButton.addEventListener('click', () => {
-        const fallback = window.setTimeout(() => window.location.assign(storeUrl), 1400);
-        document.addEventListener('visibilitychange', () => {
-          if (document.hidden) window.clearTimeout(fallback);
-        }, { once: true });
-      });
-    })();
-  </script>
-</body>
+        if (english) {
+          document.documentElement.lang = "en";
+          document.title = "Shared station · StreamBeat";
+          document.getElementById("title").textContent =
+            "Someone shared a station with you";
+          document.getElementById("description").textContent =
+            "Open it in StreamBeat and start listening live.";
+          openButton.textContent = "Open in StreamBeat";
+          document.getElementById("install-app").textContent =
+            "Get it on Google Play";
+        } else if (portuguese) {
+          document.documentElement.lang = "pt-BR";
+          document.title = "Estação compartilhada · StreamBeat";
+          document.getElementById("title").textContent =
+            "Compartilharam uma estação com você";
+          document.getElementById("description").textContent =
+            "Abra no StreamBeat e comece a ouvir ao vivo.";
+          openButton.textContent = "Abrir no StreamBeat";
+          document.getElementById("install-app").textContent =
+            "Instalar pelo Google Play";
+        }
+
+        if (!validStationId) {
+          openButton.setAttribute("aria-disabled", "true");
+          document.getElementById("description").textContent = english
+            ? "This shared station link is not valid, but you can still install StreamBeat."
+            : portuguese
+              ? "Este link de estação não é válido, mas você ainda pode instalar o StreamBeat."
+              : "Este enlace de emisora no es válido, pero aún puedes instalar StreamBeat.";
+          return;
+        }
+
+        openButton.href = `streambeat://open/station?id=${encodeURIComponent(stationId)}`;
+        openButton.addEventListener("click", () => {
+          const fallback = window.setTimeout(
+            () => window.location.assign(storeUrl),
+            1400,
+          );
+          document.addEventListener(
+            "visibilitychange",
+            () => {
+              if (document.hidden) window.clearTimeout(fallback);
+            },
+            { once: true },
+          );
+        });
+      })();
+    </script>
+  </body>
 </html>
