@@ -8,36 +8,12 @@ part of 'favorites_controller.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
-/// Notifier que expone la lista actual de favoritos y permite agregar /
-/// quitar canciones.
-///
-/// La lista se carga sincronicamente desde Hive en `build` porque la caja
-/// se abre antes de `runApp` (ver `main.dart`). Cuando hay usuario
-/// autenticado, cada mutacion empuja best-effort la copia completa a
-/// Firestore; tras un pull remoto, el controller re-lee Hive para reflejar
-/// los datos sincronizados.
 
 @ProviderFor(FavoritesController)
 final favoritesControllerProvider = FavoritesControllerProvider._();
 
-/// Notifier que expone la lista actual de favoritos y permite agregar /
-/// quitar canciones.
-///
-/// La lista se carga sincronicamente desde Hive en `build` porque la caja
-/// se abre antes de `runApp` (ver `main.dart`). Cuando hay usuario
-/// autenticado, cada mutacion empuja best-effort la copia completa a
-/// Firestore; tras un pull remoto, el controller re-lee Hive para reflejar
-/// los datos sincronizados.
 final class FavoritesControllerProvider
     extends $NotifierProvider<FavoritesController, List<FavoriteSong>> {
-  /// Notifier que expone la lista actual de favoritos y permite agregar /
-  /// quitar canciones.
-  ///
-  /// La lista se carga sincronicamente desde Hive en `build` porque la caja
-  /// se abre antes de `runApp` (ver `main.dart`). Cuando hay usuario
-  /// autenticado, cada mutacion empuja best-effort la copia completa a
-  /// Firestore; tras un pull remoto, el controller re-lee Hive para reflejar
-  /// los datos sincronizados.
   FavoritesControllerProvider._()
     : super(
         from: null,
@@ -66,16 +42,7 @@ final class FavoritesControllerProvider
 }
 
 String _$favoritesControllerHash() =>
-    r'724b0cc77c5d473b28b93207a56fdd90a481261f';
-
-/// Notifier que expone la lista actual de favoritos y permite agregar /
-/// quitar canciones.
-///
-/// La lista se carga sincronicamente desde Hive en `build` porque la caja
-/// se abre antes de `runApp` (ver `main.dart`). Cuando hay usuario
-/// autenticado, cada mutacion empuja best-effort la copia completa a
-/// Firestore; tras un pull remoto, el controller re-lee Hive para reflejar
-/// los datos sincronizados.
+    r'bdb88262fe5a610debcccc5c45dd1af016796db8';
 
 abstract class _$FavoritesController extends $Notifier<List<FavoriteSong>> {
   List<FavoriteSong> build();

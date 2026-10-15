@@ -7,7 +7,8 @@ Aplicación Flutter para descubrir música, reproducir audio y explorar estacion
 La reproducción y las preferencias siguen funcionando de forma local. Las
 funciones opcionales de cuenta y monetización usan servicios desacoplados:
 
-- Favoritos, playlists y preferencias se guardan solamente en el dispositivo con Hive.
+- Favoritos, playlists, historial y preferencias se guardan solamente en el dispositivo con Hive. No se respaldan ni se sincronizan entre dispositivos; iniciar o cerrar sesión no borra estos datos locales.
+- Las descargas, el audio sin conexión y la caché se guardan en archivos locales del dispositivo.
 - La ubicación se solicita solo mientras la app está abierta, para elegir el país de las recomendaciones y centrar el explorador de radio. No se guarda ni se envía a un servidor.
 - Supabase Auth y PostgreSQL conservan la cuenta y el perfil entre dispositivos.
 - RevenueCat valida la suscripción mensual de USD 1 mediante Google Play Billing o Apple In-App Purchase.

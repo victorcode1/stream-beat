@@ -5,7 +5,8 @@ import 'package:flutter/foundation.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
 
 const String radioPlaylistsBoxName = 'radio_playlists';
-const String _ownerUidKey = '__owner_uid';
+// Ignore metadata left by older versions without deleting local data.
+const String _legacyOwnerUidKey = '__owner_uid';
 
 class RadioPlaylistsRepository {
   const RadioPlaylistsRepository();
@@ -25,7 +26,7 @@ class RadioPlaylistsRepository {
   List<RadioPlaylist> readAll() {
     final result = <RadioPlaylist>[];
     for (final key in _box.keys) {
-      if (key == _ownerUidKey) continue;
+      if (key == _legacyOwnerUidKey) continue;
       final playlist = _decode(_box.get(key));
       if (playlist != null) result.add(playlist);
     }
@@ -41,31 +42,6 @@ class RadioPlaylistsRepository {
   Future<void> delete(String playlistId) async {
     if (playlistId.isEmpty) return;
     await _box.delete(playlistId);
-  }
-
-  Future<void> replaceAll(Iterable<RadioPlaylist> playlists) async {
-    await _box.clear();
-    final entries = <String, String>{};
-    for (final playlist in playlists) {
-      if (playlist.id.isEmpty) continue;
-      entries[playlist.id] = jsonEncode(playlist.toJson());
-    }
-    if (entries.isEmpty) return;
-    await _box.putAll(entries);
-  }
-
-  String? ownerUid() {
-    final value = _box.get(_ownerUidKey);
-    return value is String && value.isNotEmpty ? value : null;
-  }
-
-  Future<void> markOwner(String uid) async {
-    await _box.put(_ownerUidKey, uid);
-  }
-
-  Future<void> clearForUser(String uid) async {
-    await _box.clear();
-    await markOwner(uid);
   }
 
   RadioPlaylist? _decode(Object? raw) {

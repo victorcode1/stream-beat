@@ -5,14 +5,14 @@ import 'package:flutter/foundation.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
 
 const String radioFavoritesBoxName = 'radio_favorites';
-const String _ownerUidKey = '__owner_uid';
+// Ignore metadata left by older versions without deleting local data.
+const String _legacyOwnerUidKey = '__owner_uid';
 const String _addedAtKey = '__favorited_at';
 
 /// Persistencia local de las emisoras marcadas como favoritas.
 ///
 /// Cada entrada guarda `RadioStation.rawData` con un campo extra
-/// `__favorited_at` (ISO 8601) que sirve para la estrategia de merge al
-/// sincronizar con Firestore.
+/// `__favorited_at` (ISO 8601) para ordenar los favoritos locales por fecha.
 class RadioFavoritesRepository {
   const RadioFavoritesRepository();
 
@@ -21,7 +21,7 @@ class RadioFavoritesRepository {
   List<RadioStation> readAll() {
     final stations = <RadioStation>[];
     for (final key in _box.keys) {
-      if (key == _ownerUidKey) continue;
+      if (key == _legacyOwnerUidKey) continue;
       final station = _decode(_box.get(key));
       if (station != null) stations.add(station);
     }
@@ -54,33 +54,6 @@ class RadioFavoritesRepository {
   Future<void> remove(String stationId) async {
     if (stationId.isEmpty) return;
     await _box.delete(stationId);
-  }
-
-  Future<void> replaceAll(Iterable<RadioStation> stations) async {
-    await _box.clear();
-    final entries = <String, String>{};
-    for (final station in stations) {
-      final key = keyFor(station);
-      if (key.isEmpty) continue;
-      final stamped = _stamp(station, favoritedAt(station) ?? DateTime.now());
-      entries[key] = jsonEncode(stamped);
-    }
-    if (entries.isEmpty) return;
-    await _box.putAll(entries);
-  }
-
-  String? ownerUid() {
-    final value = _box.get(_ownerUidKey);
-    return value is String && value.isNotEmpty ? value : null;
-  }
-
-  Future<void> markOwner(String uid) async {
-    await _box.put(_ownerUidKey, uid);
-  }
-
-  Future<void> clearForUser(String uid) async {
-    await _box.clear();
-    await markOwner(uid);
   }
 
   static String keyFor(RadioStation station) {

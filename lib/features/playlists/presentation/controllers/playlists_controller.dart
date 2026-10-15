@@ -8,7 +8,7 @@ final playlistsControllerProvider =
       PlaylistsController.new,
     );
 
-// Playlists stay on this device until an explicit sync service is introduced.
+// Playlists are stored only on this device.
 class PlaylistsController extends Notifier<List<Playlist>> {
   final PlaylistsRepository _repository = const PlaylistsRepository();
 

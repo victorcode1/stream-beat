@@ -9,9 +9,8 @@ const _repeatKey = 'repeat_enabled';
 const _smoothTransitionsKey = 'audio_tools_smooth_transitions';
 const _localeKey = 'locale';
 const _updatedAtKey = 'settings_updated_at_ms';
-const _ownerUidKey = 'settings_owner_uid';
 
-/// Lee y escribe los ajustes simples sincronizables sobre la misma caja
+/// Lee y escribe los ajustes locales sobre la misma caja
 /// Hive `settings` que ya usan los controllers de theme/autoplay. Asi se
 /// evita duplicar el almacenamiento local.
 class SettingsLocalDataSource {
@@ -57,30 +56,5 @@ class SettingsLocalDataSource {
       _updatedAtKey,
       settings.updatedAtMs ?? DateTime.now().millisecondsSinceEpoch,
     );
-  }
-
-  String? ownerUid() {
-    final value = _box.get(_ownerUidKey);
-    return value is String && value.isNotEmpty ? value : null;
-  }
-
-  Future<void> markOwner(String uid) async {
-    await _box.put(_ownerUidKey, uid);
-  }
-
-  Future<void> writeForUser(String uid, UserSettings settings) async {
-    await write(settings);
-    await markOwner(uid);
-  }
-
-  Future<void> clearForUser(String uid) async {
-    await _box.delete(_themeModeKey);
-    await _box.delete(_localeKey);
-    await _box.delete(_autoplayKey);
-    await _box.delete(_defaultPlaybackModeKey);
-    await _box.delete(_repeatKey);
-    await _box.delete(_smoothTransitionsKey);
-    await _box.delete(_updatedAtKey);
-    await markOwner(uid);
   }
 }

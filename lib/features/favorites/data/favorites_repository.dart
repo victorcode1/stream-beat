@@ -7,7 +7,8 @@ import 'package:hive_ce_flutter/hive_flutter.dart';
 /// Nombre de la caja Hive que persiste favoritos. La caja se abre en
 /// `main.dart` antes de runApp.
 const String favoritesBoxName = 'favorites';
-const String _ownerUidKey = '__owner_uid';
+// Ignore metadata left by older versions without deleting local data.
+const String _legacyOwnerUidKey = '__owner_uid';
 
 /// Acceso de bajo nivel a la persistencia de favoritos.
 ///
@@ -24,7 +25,7 @@ class FavoritesRepository {
   List<FavoriteSong> readAll() {
     final result = <FavoriteSong>[];
     for (final key in _box.keys) {
-      if (key == _ownerUidKey) continue;
+      if (key == _legacyOwnerUidKey) continue;
       final raw = _box.get(key);
       final favorite = _decode(raw);
       if (favorite != null) result.add(favorite);
@@ -46,34 +47,6 @@ class FavoritesRepository {
   Future<void> remove(String videoId) async {
     if (videoId.isEmpty) return;
     await _box.delete(videoId);
-  }
-
-  /// Reemplaza el contenido completo de la caja con [favorites]. Se usa
-  /// despues de fusionar con la copia remota: borra primero y reescribe
-  /// para evitar entradas huerfanas.
-  Future<void> replaceAll(Iterable<FavoriteSong> favorites) async {
-    await _box.clear();
-    final entries = <String, String>{};
-    for (final fav in favorites) {
-      if (fav.videoId.isEmpty) continue;
-      entries[fav.videoId] = jsonEncode(fav.toJson());
-    }
-    if (entries.isEmpty) return;
-    await _box.putAll(entries);
-  }
-
-  String? ownerUid() {
-    final value = _box.get(_ownerUidKey);
-    return value is String && value.isNotEmpty ? value : null;
-  }
-
-  Future<void> markOwner(String uid) async {
-    await _box.put(_ownerUidKey, uid);
-  }
-
-  Future<void> clearForUser(String uid) async {
-    await _box.clear();
-    await markOwner(uid);
   }
 
   FavoriteSong? _decode(Object? raw) {

@@ -1,5 +1,4 @@
-/// DTO de los ajustes sincronizables. Cualquier preferencia simple que la
-/// app quiera espejar en Firestore debe vivir en este mapa.
+/// DTO de los ajustes que la app guarda localmente en el dispositivo.
 class UserSettings {
   const UserSettings({
     this.themeMode,
@@ -35,7 +34,7 @@ class UserSettings {
   final bool? smoothTransitions;
 
   /// Marca de tiempo en ms desde epoch del momento en que se guardo este
-  /// ajuste. Se usa para resolver conflictos remoto/local.
+  /// ajuste en el dispositivo.
   final int? updatedAtMs;
 
   bool get isEmpty {
