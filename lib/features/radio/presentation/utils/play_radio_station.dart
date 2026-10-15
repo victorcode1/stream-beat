@@ -1,10 +1,13 @@
 import 'dart:async';
 
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flow_music/core/audio/background_audio_handler.dart';
 import 'package:flow_music/core/engagement/review_prompt_coordinator.dart';
+import 'package:flow_music/core/utils/locale_keys.g.dart';
 import 'package:flow_music/features/history/presentation/controllers/playback_history_controller.dart';
 import 'package:flow_music/features/radio/data/models/radio_station.dart';
 import 'package:flow_music/features/radio/data/repositories/radio_browser_repository.dart';
+import 'package:flow_music/features/radio/data/station_removals_repository.dart';
 import 'package:flow_music/features/radio/presentation/controllers/radio_queue_controller.dart';
 import 'package:flow_music/features/radio/presentation/utils/playback_retry.dart';
 import 'package:flow_music/features/radio/presentation/utils/playback_retry_feedback.dart';
@@ -28,11 +31,22 @@ Future<bool> playRadioStation({
   RadioBrowserRepository? repository,
 }) async {
   if (!station.isPlayable) return false;
+  final requestId = ++_latestPlaybackRequest;
+  final removals =
+      await (repository?.removalsRepository ??
+              StationRemovalsRepository.instance)
+          .load();
+  if (!context.mounted || requestId != _latestPlaybackRequest) return false;
+  if (removals.contains(station)) {
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+      SnackBar(content: Text(LocaleKeys.station_unavailable.tr())),
+    );
+    return false;
+  }
   if (queue != null && index != null) {
     ref.read(radioQueueControllerProvider.notifier).enqueue(queue, index);
   }
 
-  final requestId = ++_latestPlaybackRequest;
   return _resolveAndPlay(
     context: context,
     ref: ref,
@@ -197,6 +211,13 @@ Future<bool> _resolveAndPlay({
     return true;
   } catch (error) {
     if (!context.mounted || !isCurrentRequest()) return false;
+    if (error is StationUnavailableException) {
+      flowAudioHandler.failMediaPreparation(error);
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        SnackBar(content: Text(LocaleKeys.station_unavailable.tr())),
+      );
+      return false;
+    }
     debugPrint('Unable to resolve radio stream: $error');
     await activeRepository.healthRepository.recordFailure(station, error);
     if (!context.mounted || !isCurrentRequest()) return false;

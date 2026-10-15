@@ -1,7 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-
-import 'package:flow_music/core/utils/search_text_normalizer.dart';
 import 'dart:math' as math;
 
 import 'package:audioplayers/audioplayers.dart';
@@ -9,6 +7,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flow_music/core/audio/background_audio_handler.dart';
 import 'package:flow_music/core/theme/custom_theme.dart';
 import 'package:flow_music/core/utils/locale_keys.g.dart';
+import 'package:flow_music/core/utils/search_text_normalizer.dart';
 import 'package:flow_music/features/home/data/location_service.dart';
 import 'package:flow_music/features/home/presentation/providers/text_search.dart';
 import 'package:flow_music/features/radio/data/models/radio_country.dart';
@@ -20,10 +19,11 @@ import 'package:flow_music/features/radio/presentation/controllers/radio_queue_c
 import 'package:flow_music/features/radio/presentation/utils/play_radio_station.dart';
 import 'package:flow_music/features/radio/presentation/widgets/particles_fly.dart';
 import 'package:flow_music/features/radio/presentation/widgets/radio_playlist_actions.dart';
+import 'package:flow_music/features/radio/presentation/widgets/station_links.dart';
 import 'package:flow_music/shared/widgets/optimized_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 
@@ -2000,6 +2000,7 @@ class _NowPlayingStationCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 10),
+              StationActionsMenu(station: station),
               IconButton.filled(
                 onPressed: onTap,
                 icon: isLoading

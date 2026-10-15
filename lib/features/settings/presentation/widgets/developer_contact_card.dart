@@ -1,11 +1,11 @@
 import 'package:easy_localization/easy_localization.dart';
+import 'package:flow_music/core/contact/developer_contact.dart';
 import 'package:flow_music/core/utils/locale_keys.g.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_email_sender/flutter_email_sender.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 const _developerName = 'Victor Flores';
-const _developerEmail = 'victorflores20511@gmail.com';
 const _developerPhone = '50762395182';
 final _developerGitHubUri = Uri.parse('https://github.com/victorcode1');
 
@@ -68,7 +68,7 @@ class DeveloperContactCard extends StatelessWidget {
     final email = Email(
       subject: LocaleKeys.developer_email_subject.tr(),
       body: LocaleKeys.developer_email_body.tr(),
-      recipients: const [_developerEmail],
+      recipients: const [developerEmail],
       isHTML: false,
     );
     String? errorMessage;
@@ -219,7 +219,7 @@ class _DeveloperDetails extends StatelessWidget {
             const SizedBox(width: 5),
             Flexible(
               child: Text(
-                _developerEmail,
+                developerEmail,
                 overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: colors.onSurfaceVariant,

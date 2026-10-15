@@ -1,8 +1,10 @@
 import 'dart:async';
 
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flow_music/core/analytics/product_analytics.dart';
 import 'package:flow_music/core/audio/background_audio_handler.dart';
 import 'package:flow_music/core/engagement/review_prompt_coordinator.dart';
+import 'package:flow_music/core/utils/locale_keys.g.dart';
 import 'package:flow_music/core/utils/main_controller.dart';
 import 'package:flow_music/features/account/application/local_user_data_coordinator.dart';
 import 'package:flow_music/features/account/presentation/providers/local_user_data_providers.dart';
@@ -12,6 +14,7 @@ import 'package:flow_music/features/monetization/application/monetization_coordi
 import 'package:flow_music/features/monetization/presentation/providers/monetization_providers.dart';
 import 'package:flow_music/features/radio/data/models/radio_station.dart';
 import 'package:flow_music/features/radio/data/repositories/radio_browser_repository.dart';
+import 'package:flow_music/features/radio/data/station_removals_repository.dart';
 import 'package:flow_music/features/radio/presentation/controllers/radio_queue_controller.dart';
 import 'package:flow_music/features/radio/presentation/utils/playback_retry.dart';
 import 'package:flow_music/features/radio/presentation/utils/playback_retry_feedback.dart';
@@ -105,6 +108,18 @@ class MainAppController {
     bool isCurrentRequest() => requestId == _queuePlaybackRequest;
 
     try {
+      final removals = await repository.removalsRepository.load();
+      if (!isCurrentRequest()) return;
+      if (removals.contains(station)) {
+        ref
+            .read(mainController)
+            .scaffoldMessage
+            .currentState
+            ?.showSnackBar(
+              SnackBar(content: Text(LocaleKeys.station_unavailable.tr())),
+            );
+        return;
+      }
       flowAudioHandler.beginMediaPreparation(
         id: stationId,
         title: station.name,
@@ -195,7 +210,9 @@ class MainAppController {
     } catch (error) {
       debugPrint('Unable to advance the radio queue: $error');
       if (isCurrentRequest()) {
-        await repository.healthRepository.recordFailure(station, error);
+        if (error is! StationUnavailableException) {
+          await repository.healthRepository.recordFailure(station, error);
+        }
         flowAudioHandler.failMediaPreparation(error);
       }
     } finally {

@@ -8,6 +8,7 @@ void main() {
       'stationuuid': 'panama-radio',
       'name': 'Radio Panamá',
       'url': 'https://example.com/original',
+      'homepage': 'https://example.com/',
       'url_resolved': 'https://example.com/live',
       'favicon': 'https://example.com/icon.png',
       'country': 'Panama',
@@ -25,6 +26,7 @@ void main() {
     expect(decoded, isNotNull);
     expect(decoded!.stationUuid, 'panama-radio');
     expect(decoded.name, 'Radio Panamá');
+    expect(decoded.homepage, 'https://example.com/');
     expect(decoded.streamUrl, 'https://example.com/live');
     expect(decoded.countryCode, 'PA');
     expect(decoded.bitrate, 128);

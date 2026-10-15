@@ -1,4 +1,5 @@
 import 'package:flow_music/features/radio/data/models/radio_station.dart';
+import 'package:flow_music/features/radio/data/station_removals_repository.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 /// Cola de emisoras de la sesion actual.
@@ -46,7 +47,11 @@ class RadioQueueController extends Notifier<RadioQueueState> {
     }
     final selectedId = _idOf(stations[selectedIndex]);
     final playable = stations
-        .where((station) => station.isPlayable)
+        .where(
+          (station) =>
+              station.isPlayable &&
+              !StationRemovalsRepository.instance.current.contains(station),
+        )
         .toList(growable: false);
     final newIndex = playable.indexWhere(
       (station) => _idOf(station) == selectedId,
@@ -61,7 +66,14 @@ class RadioQueueController extends Notifier<RadioQueueState> {
   /// Avanza a la siguiente emisora y la devuelve, o `null` si no hay.
   RadioStation? next() {
     if (!state.hasNext) return null;
-    final nextIndex = state.index + 1;
+    var nextIndex = state.index + 1;
+    while (nextIndex < state.stations.length &&
+        StationRemovalsRepository.instance.current.contains(
+          state.stations[nextIndex],
+        )) {
+      nextIndex++;
+    }
+    if (nextIndex >= state.stations.length) return null;
     state = RadioQueueState(stations: state.stations, index: nextIndex);
     return state.stations[nextIndex];
   }
@@ -69,7 +81,14 @@ class RadioQueueController extends Notifier<RadioQueueState> {
   /// Retrocede a la emisora anterior y la devuelve, o `null` si no hay.
   RadioStation? previous() {
     if (!state.hasPrevious) return null;
-    final prevIndex = state.index - 1;
+    var prevIndex = state.index - 1;
+    while (prevIndex >= 0 &&
+        StationRemovalsRepository.instance.current.contains(
+          state.stations[prevIndex],
+        )) {
+      prevIndex--;
+    }
+    if (prevIndex < 0) return null;
     state = RadioQueueState(stations: state.stations, index: prevIndex);
     return state.stations[prevIndex];
   }

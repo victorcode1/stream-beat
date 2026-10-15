@@ -6,17 +6,21 @@ import 'package:flow_music/features/radio/data/models/radio_country.dart';
 import 'package:flow_music/features/radio/data/models/radio_station.dart';
 import 'package:flow_music/features/radio/data/models/radio_tag.dart';
 import 'package:flow_music/features/radio/data/radio_station_health_repository.dart';
+import 'package:flow_music/features/radio/data/station_removals_repository.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class RadioBrowserRepository {
   RadioBrowserRepository({
     http.Client? client,
+    StationRemovalsRepository? removalsRepository,
     Duration requestTimeout = const Duration(seconds: 10),
     bool? requireHttps,
     RadioStationHealthRepository? healthRepository,
   }) : _client = client ?? http.Client(),
        _ownsClient = client == null,
+       removalsRepository =
+           removalsRepository ?? StationRemovalsRepository.instance,
        _requestTimeout = requestTimeout,
        _requireHttps = requireHttps ?? kIsWeb,
        healthRepository = healthRepository ?? RadioStationHealthRepository();
@@ -26,6 +30,7 @@ class RadioBrowserRepository {
   static const _fallbackBaseUrl = 'https://de1.api.radio-browser.info';
   static const _maximumServersPerRequest = 3;
 
+  final StationRemovalsRepository removalsRepository;
   final http.Client _client;
   final bool _ownsClient;
   final Duration _requestTimeout;
@@ -117,10 +122,11 @@ class RadioBrowserRepository {
   }
 
   Future<String> countClickAndResolveUrl(RadioStation station) async {
+    await _checkAvailable(station);
     final fallback = _canUseStreamUrl(station.streamUrl)
         ? station.streamUrl
         : null;
-    if (station.stationUuid.isEmpty) {
+    if (station.isCustomStation || station.stationUuid.isEmpty) {
       return fallback ?? _throwIncompatibleStream();
     }
 
@@ -133,10 +139,13 @@ class RadioBrowserRepository {
       final data = jsonDecode(response.body);
       if (data is Map<String, dynamic>) {
         final resolvedUrl = data['url'] as String? ?? '';
+        _checkResolvedUrl(station, resolvedUrl);
         return _canUseStreamUrl(resolvedUrl)
             ? resolvedUrl.trim()
             : fallback ?? _throwIncompatibleStream();
       }
+    } on StationUnavailableException {
+      rethrow;
     } catch (_) {
       return fallback ?? _throwIncompatibleStream();
     }
@@ -151,12 +160,14 @@ class RadioBrowserRepository {
     RadioStation station, {
     String? fallbackUrl,
   }) async {
+    await _checkAvailable(station);
+    if (fallbackUrl != null) _checkResolvedUrl(station, fallbackUrl);
     final fallback = _canUseStreamUrl(fallbackUrl ?? '')
         ? fallbackUrl!.trim()
         : _canUseStreamUrl(station.streamUrl)
         ? station.streamUrl
         : null;
-    if (station.stationUuid.isEmpty) {
+    if (station.isCustomStation || station.stationUuid.isEmpty) {
       return fallback ?? _throwIncompatibleStream();
     }
 
@@ -166,10 +177,15 @@ class RadioBrowserRepository {
       });
       for (final item in data) {
         final refreshed = RadioStation.fromJson(item);
+        if (removalsRepository.current.contains(refreshed)) {
+          throw const StationUnavailableException();
+        }
         if (refreshed.isPlayable && (!_requireHttps || refreshed.isHttps)) {
           return refreshed.streamUrl;
         }
       }
+    } on StationUnavailableException {
+      rethrow;
     } catch (_) {
       // The initial resolved URL remains the safest fallback.
     }
@@ -194,10 +210,7 @@ class RadioBrowserRepository {
       // descargar. En esos casos confirmamos con GET antes de conservar la URL.
       if (response.statusCode == 403 || response.statusCode == 405) {
         final getResponse = await _client
-            .get(
-              uri,
-              headers: {..._imageHeaders, 'Range': 'bytes=0-0'},
-            )
+            .get(uri, headers: {..._imageHeaders, 'Range': 'bytes=0-0'})
             .timeout(_requestTimeout);
         if (getResponse.statusCode >= 200 && getResponse.statusCode < 300) {
           return artworkUrl;
@@ -218,9 +231,11 @@ class RadioBrowserRepository {
     String path, [
     Map<String, String>? queryParameters,
   ]) async {
+    await removalsRepository.load();
     final data = await _getList(path, queryParameters);
     final stations = data
         .map(RadioStation.fromJson)
+        .where((station) => !removalsRepository.current.contains(station))
         .where((station) => station.isPlayable)
         .where((station) => !_requireHttps || station.isHttps)
         .toList();
@@ -330,6 +345,18 @@ class RadioBrowserRepository {
     'Accept': 'image/*,*/*;q=0.8',
     'User-Agent': 'StreamBeat/0.1.0 (flow-music)',
   };
+
+  Future<void> _checkAvailable(RadioStation station) async {
+    if (station.isCustomStation) return;
+    final removals = await removalsRepository.load();
+    if (removals.contains(station)) throw const StationUnavailableException();
+  }
+
+  void _checkResolvedUrl(RadioStation station, String url) {
+    if (!station.isCustomStation && removalsRepository.current.blocksUrl(url)) {
+      throw const StationUnavailableException();
+    }
+  }
 
   bool _canUseStreamUrl(String value) {
     if (!RadioStation.isPlayableUrl(value)) return false;

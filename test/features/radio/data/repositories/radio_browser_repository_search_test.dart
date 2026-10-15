@@ -1,3 +1,4 @@
+import 'package:flow_music/features/radio/data/station_removals_repository.dart';
 import 'package:flow_music/features/radio/data/models/radio_station.dart';
 import 'package:flow_music/features/radio/data/repositories/radio_browser_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -15,7 +16,10 @@ void main() {
       searchUri = request.url;
       return http.Response('[]', 200);
     });
-    final repository = RadioBrowserRepository(client: client);
+    final repository = RadioBrowserRepository(
+      client: client,
+      removalsRepository: _emptyRemovals(),
+    );
 
     await repository.searchStations(name: 'Rock FM', countryCode: 'pa');
 
@@ -39,7 +43,10 @@ void main() {
         200,
       );
     });
-    final repository = RadioBrowserRepository(client: client);
+    final repository = RadioBrowserRepository(
+      client: client,
+      removalsRepository: _emptyRemovals(),
+    );
 
     final stations = await repository.searchStations(name: 'PÁNAMÁ');
 
@@ -58,7 +65,10 @@ void main() {
       searchUri = request.url;
       return http.Response('[]', 200);
     });
-    final repository = RadioBrowserRepository(client: client);
+    final repository = RadioBrowserRepository(
+      client: client,
+      removalsRepository: _emptyRemovals(),
+    );
 
     await repository.searchStations(name: 'pana');
 
@@ -77,7 +87,10 @@ void main() {
 
       return http.Response('[]', 200);
     });
-    final repository = RadioBrowserRepository(client: client);
+    final repository = RadioBrowserRepository(
+      client: client,
+      removalsRepository: _emptyRemovals(),
+    );
 
     await Future.wait([repository.topStations(), repository.topTags()]);
 
@@ -101,7 +114,10 @@ void main() {
       }
       return http.Response('[]', 200);
     });
-    final repository = RadioBrowserRepository(client: client);
+    final repository = RadioBrowserRepository(
+      client: client,
+      removalsRepository: _emptyRemovals(),
+    );
 
     await repository.topStations();
 
@@ -126,6 +142,7 @@ void main() {
     });
     final repository = RadioBrowserRepository(
       client: client,
+      removalsRepository: _emptyRemovals(),
       requireHttps: true,
     );
 
@@ -149,7 +166,10 @@ void main() {
         200,
       );
     });
-    final repository = RadioBrowserRepository(client: client);
+    final repository = RadioBrowserRepository(
+      client: client,
+      removalsRepository: _emptyRemovals(),
+    );
     final station = RadioStation.fromJson(const {
       'stationuuid': 'station-1',
       'name': 'Radio',
@@ -175,6 +195,7 @@ void main() {
     });
     final repository = RadioBrowserRepository(
       client: client,
+      removalsRepository: _emptyRemovals(),
       requireHttps: true,
     );
     final station = RadioStation.fromJson(const {
@@ -207,7 +228,10 @@ void main() {
       }
       return http.Response('[]', 200);
     });
-    final repository = RadioBrowserRepository(client: client);
+    final repository = RadioBrowserRepository(
+      client: client,
+      removalsRepository: _emptyRemovals(),
+    );
 
     final stations = await repository.searchStations(name: 'MÁXIMA-FM');
 
@@ -215,3 +239,11 @@ void main() {
     expect(stations.map((station) => station.stationUuid), ['maxima']);
   });
 }
+
+StationRemovalsRepository _emptyRemovals() => StationRemovalsRepository(
+  client: MockClient((_) async => http.Response('', 404)),
+  readCache: () => null,
+  writeCache: (_) async {},
+  loadAsset: () async =>
+      '{"version":1,"updatedAt":"1970-01-01T00:00:00Z","stationUuids":[],"streamHosts":[]}',
+);

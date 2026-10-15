@@ -9,6 +9,7 @@ import 'package:flow_music/features/radio/data/repositories/radio_browser_reposi
 import 'package:flow_music/features/radio/presentation/utils/play_radio_station.dart';
 import 'package:flow_music/features/radio/presentation/widgets/radio_playlist_actions.dart';
 import 'package:flow_music/features/radio/presentation/widgets/radio_station_tile.dart';
+import 'package:flow_music/features/settings/presentation/pages/station_rights_page.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
@@ -111,6 +112,7 @@ class _RadioStationSearchViewState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        const StationDirectoryAttribution(),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
           child: Text(

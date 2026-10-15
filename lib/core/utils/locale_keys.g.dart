@@ -390,4 +390,23 @@ abstract class LocaleKeys {
   static const subscription_promo_later = 'subscription_promo_later';
   static const subscription_promo_action = 'subscription_promo_action';
   static const contribution_action = 'contribution_action';
+  static const station_unavailable = 'station_unavailable';
+  static const station_website = 'station_website';
+  static const station_report_removal = 'station_report_removal';
+  static const station_removal_subject = 'station_removal_subject';
+  static const station_removal_body = 'station_removal_body';
+  static const station_rights_title = 'station_rights_title';
+  static const station_rights_directory = 'station_rights_directory';
+  static const station_rights_streams = 'station_rights_streams';
+  static const station_rights_owners = 'station_rights_owners';
+  static const station_rights_removal = 'station_rights_removal';
+  static const station_broadcasters = 'station_broadcasters';
+  static const station_directory_attribution = 'station_directory_attribution';
+  static const station_add = 'station_add';
+  static const station_name = 'station_name';
+  static const station_name_required = 'station_name_required';
+  static const station_stream_url = 'station_stream_url';
+  static const station_optional_website = 'station_optional_website';
+  static const station_invalid_url = 'station_invalid_url';
+  static const station_save_error = 'station_save_error';
 }

@@ -1,14 +1,15 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flow_music/core/utils/locale_keys.g.dart';
+import 'package:flow_music/features/daily_recommendations/domain/repositories/daily_recommendation_repository.dart';
+import 'package:flow_music/features/daily_recommendations/presentation/providers/daily_recommendation_providers.dart';
+import 'package:flow_music/features/monetization/presentation/widgets/monetization_settings_card.dart';
 import 'package:flow_music/features/settings/presentation/controllers/accent_color_controller.dart';
 import 'package:flow_music/features/settings/presentation/controllers/autoplay_enabled_controller.dart';
 import 'package:flow_music/features/settings/presentation/controllers/settings_page_controller.dart';
 import 'package:flow_music/features/settings/presentation/controllers/theme_mode_controller.dart';
-import 'package:flow_music/features/daily_recommendations/domain/repositories/daily_recommendation_repository.dart';
-import 'package:flow_music/features/daily_recommendations/presentation/providers/daily_recommendation_providers.dart';
+import 'package:flow_music/features/settings/presentation/pages/station_rights_page.dart';
 import 'package:flow_music/features/settings/presentation/widgets/accent_color_palette.dart';
 import 'package:flow_music/features/settings/presentation/widgets/developer_contact_card.dart';
-import 'package:flow_music/features/monetization/presentation/widgets/monetization_settings_card.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
@@ -121,6 +122,8 @@ class SettingsMobileContent extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 16),
+          const StationRightsEntry(),
+          const SizedBox(height: 14),
           const DeveloperContactCard(),
         ],
       ),

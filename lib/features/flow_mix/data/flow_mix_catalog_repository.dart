@@ -47,7 +47,11 @@ class FlowMixCatalogRepository {
         final id = station.stationUuid.isEmpty
             ? station.streamUrl
             : station.stationUuid;
-        if (id.isEmpty || !station.isPlayable) continue;
+        if (id.isEmpty ||
+            !station.isPlayable ||
+            repository.removalsRepository.current.contains(station)) {
+          continue;
+        }
         unique[id] = station;
       }
       return repository.healthRepository.rank(unique.values);

@@ -73,7 +73,7 @@ class _SharedStationPageState extends ConsumerState<SharedStationPage> {
               const Icon(Icons.radio_rounded, size: 64),
               const SizedBox(height: 20),
               Text(
-                LocaleKeys.shared_station_not_found.tr(),
+                LocaleKeys.station_unavailable.tr(),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 20),

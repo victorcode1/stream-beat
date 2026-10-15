@@ -63,6 +63,7 @@ class RadioStationHealthRepository {
       : null;
 
   RadioStationHealth read(RadioStation station) {
+    if (station.isCustomStation) return const RadioStationHealth();
     final key = keyFor(station);
     final box = _box;
     if (key.isEmpty || box == null) return const RadioStationHealth();
@@ -82,6 +83,7 @@ class RadioStationHealthRepository {
   }
 
   Future<void> recordSuccess(RadioStation station) async {
+    if (station.isCustomStation) return;
     final key = keyFor(station);
     final box = _box;
     if (key.isEmpty || box == null) return;
@@ -98,6 +100,7 @@ class RadioStationHealthRepository {
   }
 
   Future<void> recordFailure(RadioStation station, [Object? error]) async {
+    if (station.isCustomStation) return;
     final key = keyFor(station);
     final box = _box;
     if (key.isEmpty || box == null) return;

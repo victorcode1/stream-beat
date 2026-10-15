@@ -1,7 +1,9 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flow_music/core/theme/custom_theme.dart';
 import 'package:flow_music/core/utils/locale_keys.g.dart';
+import 'package:flow_music/features/radio/data/custom_station.dart';
 import 'package:flow_music/features/radio/data/models/radio_station.dart';
+import 'package:flow_music/features/radio/presentation/widgets/station_links.dart';
 import 'package:flow_music/shared/widgets/optimized_network_image.dart';
 import 'package:flutter/material.dart';
 
@@ -28,7 +30,7 @@ class RadioStationTile extends StatelessWidget {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final extras = theme.extension<FlowThemeExtras>();
-    final hasMenu = onAddToPlaylist != null || onRemove != null;
+
     final artwork = station.artworkUrl;
     final borderRadius = BorderRadius.circular(20);
 
@@ -93,7 +95,7 @@ class RadioStationTile extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              if (hasMenu) ...[
+              ...[
                 PopupMenuButton<_StationAction>(
                   tooltip: LocaleKeys.menu.tr(),
                   icon: Icon(
@@ -106,9 +108,22 @@ class RadioStationTile extends StatelessWidget {
                         onAddToPlaylist?.call();
                       case _StationAction.remove:
                         onRemove?.call();
+                      case _StationAction.website:
+                        handleStationLinkAction(context, station, 'website');
+                      case _StationAction.report:
+                        handleStationLinkAction(context, station, 'report');
                     }
                   },
                   itemBuilder: (context) => [
+                    if (stationWebUri(station.homepage) != null)
+                      PopupMenuItem(
+                        value: _StationAction.website,
+                        child: Text(LocaleKeys.station_website.tr()),
+                      ),
+                    PopupMenuItem(
+                      value: _StationAction.report,
+                      child: Text(LocaleKeys.station_report_removal.tr()),
+                    ),
                     if (onAddToPlaylist != null)
                       PopupMenuItem(
                         value: _StationAction.addToPlaylist,
@@ -159,7 +174,7 @@ class RadioStationTile extends StatelessWidget {
   }
 }
 
-enum _StationAction { addToPlaylist, remove }
+enum _StationAction { addToPlaylist, remove, website, report }
 
 class _Placeholder extends StatelessWidget {
   const _Placeholder({required this.colors});

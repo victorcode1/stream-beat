@@ -13,6 +13,7 @@ class DailyStationPayload {
         'name': station.name,
         'url': station.url,
         'url_resolved': station.urlResolved,
+        'homepage': station.homepage,
         'favicon': station.favicon,
         'country': station.country,
         'countrycode': station.countryCode,

@@ -101,6 +101,8 @@ class RadioStation {
     return uri;
   }
 
+  bool get isCustomStation => stationUuid.startsWith('custom-');
+
   bool get isPlayable => streamUri != null;
   bool get isHttps => streamUri?.scheme.toLowerCase() == 'https';
   bool get isHttp => streamUri?.scheme.toLowerCase() == 'http';
