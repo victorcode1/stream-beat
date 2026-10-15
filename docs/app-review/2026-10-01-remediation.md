@@ -218,3 +218,59 @@ La captura y el registro del catálogo se subieron a `store` en 88a6574.
   de compra completada ni de restauración en el dispositivo.
 - Aceptar la invitación de Apple e instalar el build 24 desde TestFlight permite
   continuar esa validación. El envío final de App Review sigue sin realizarse.
+
+## Continuación del 12 de octubre de 2026
+
+- Estado inicial de Apple: 1.1.15 (24), `Ready for Review`, borrador de cuatro
+  artículos sin enviar. Presentación anterior del 28 de septiembre: `Removed`.
+- Se verificaron los tres aportes no consumibles, con localizaciones es-MX,
+  en-US y pt-BR, captura/notas de revisión y disponibilidad internacional.
+  La versión, descripción y texto promocional describen aportes sin renovación
+  y compra/restauración sin cuenta; los planes antiguos están fuera del envío.
+- Se revisaron el código de compras de invitado, almacenamiento local, capturas
+  de iPhone/iPad y política de privacidad publicada del 2 de octubre.
+- 93 pruebas enfocadas aprobadas; análisis de los módulos revisados sin
+  incidencias; verificador de monetización iOS correcto.
+- Se compiló el código actual de `store` (43ca6f0) para iOS como 1.1.15 (26),
+  preservando 1.1.16+25 de `pubspec.yaml`, usado en Android. Archivo e IPA
+  exportados; bundle, versión y build comprobados. Firma verificada con acceso
+  al llavero. La IPA exportada incluye `beta-reports-active=true` y
+  `get-task-allow=false`.
+- La primera subida falló por falta de sesión Apple en Xcode 27. Tras iniciar
+  sesión, la subida terminó con `Uploaded Runner` y `EXPORT SUCCEEDED`.
+  Advertencias dSYM de GoogleMobileAds, Sentry y UserMessagingPlatform no
+  impidieron la carga.
+- Apple procesó el build 26; se seleccionó y guardó para 1.1.15. La versión
+  se reunió con los tres aportes en el borrador original: cuatro artículos.
+- Dossier actualizado de autoría, aportes y arquitectura guardado en
+  `output/pdf/StreamBeat-App-Review-Dossier-2026-10-12.pdf`, revisado visualmente
+  y adjuntado a la versión. Es un reporte técnico sin firma; no acredita
+  permisos de emisoras. Se conservó la solicitud de aclaración sobre 5.2.3.
+- Se corrigieron la descripción beta es-MX y las notas de TestFlight que
+  todavía indicaban productos mensuales/vitalicios.
+- Las credenciales proporcionadas se usaron para Xcode y se actualizaron en
+  Contraseñas de macOS, en la entrada Apple existente y no compartida. No se
+  guardan credenciales en este documento, en archivos del proyecto ni en memoria.
+- El iPhone tenía una versión de desarrollo 1.1.7 (10). TestFlight falló al
+  reemplazarla. Con autorización específica del usuario se respaldaron diez
+  archivos de Documents en `/private/tmp/streambeat-library-before-testflight26`,
+  se verificaron tamaños, y se eliminó solo `com.victorflores.streambeat`.
+  La instalación limpia de TestFlight 1.1.15 (26) funcionó.
+- Se verificaron arranque, rechazo de seguimiento/ubicación y pantalla de
+  aportes como invitado con los tres precios reales. El aporte pequeño abrió
+  el diálogo de Apple, que confirmó que la compra beta no cobra dinero. La
+  compra terminó con el mensaje de éxito y el beneficio sin anuncios, sin
+  cuenta de StreamBeat. El beneficio permaneció tras terminar y relanzar la app.
+  La restauración se ejecutó como invitado; el usuario confirmó el toast de
+  compra restaurada. Duplicación no capturó ese aviso breve: la confirmación
+  de restauración es reportada por el operador del dispositivo.
+- El dossier incorpora una tercera página con esta validación que reemplaza
+  el estado pendiente anterior. Las notas de revisión distinguen compra
+  observada, persistencia observada y restauración confirmada por el usuario.
+- Envío final realizado el 12 de octubre a las 10:39 AM de Panamá. Apple
+  confirmó `4 Items Submitted`: versión 1.1.15 (26) y tres aportes. Todos
+  aparecen en `Waiting for Review`. Submission ID:
+  `fc697da8-47b1-4395-b667-897631a7b4d9`. Aprobación/publicación pendientes.
+  Captura: `tmp/app-review-submitted-build26.png`.
+- La consulta de derechos 5.2.3 sigue abierta: se adjuntó evidencia de autoría
+  y arquitectura, sin afirmar permisos de emisoras no proporcionados.
