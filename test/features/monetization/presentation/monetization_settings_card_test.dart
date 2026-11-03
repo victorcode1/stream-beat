@@ -82,9 +82,13 @@ void main() {
     expect(launched?.arguments['useSafariVC'], false);
     expect(subscriptions.purchasedKinds, isEmpty);
     expect(subscriptions.restoreCalls, 0);
-  }, variant: TargetPlatformVariant({TargetPlatform.android}));
+  }, variant: TargetPlatformVariant({TargetPlatform.windows}));
 
-  for (final platform in [TargetPlatform.iOS, TargetPlatform.macOS]) {
+  for (final platform in [
+    TargetPlatform.android,
+    TargetPlatform.iOS,
+    TargetPlatform.macOS,
+  ]) {
     testWidgets('external support is hidden on $platform', (tester) async {
       await pumpCard(tester);
       expect(find.byKey(const Key('external-support')), findsNothing);
@@ -107,7 +111,7 @@ void main() {
       await tester.tap(button);
       await tester.pumpAndSettle();
       expect(find.text('subscription_link_failed'), findsOneWidget);
-    }, variant: TargetPlatformVariant({TargetPlatform.android}));
+    }, variant: TargetPlatformVariant({TargetPlatform.windows}));
   }
 
   testWidgets('contributions and restore have no account controls', (

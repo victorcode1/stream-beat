@@ -188,10 +188,14 @@ es voluntario, desde USD 1, sin eliminar anuncios ni desbloquear funciones.
 No inicia compras, no modifica RevenueCat y no otorga `remove_ads`. Los errores
 de apertura se comunican mediante el aviso de enlace no disponible.
 
-El botón se muestra en Android, web y escritorio no Apple, incluso para usuarios
-que ya tienen el beneficio sin anuncios. Las compilaciones nativas de iOS y
-macOS lo ocultan: no se ha implementado la verificación de storefront ni los
-permisos regionales de Apple. No se usa el idioma o la ubicación del dispositivo
+El botón solo se muestra en web y en escritorio Windows/Linux, incluso para
+usuarios que ya tienen el beneficio sin anuncios. Las compilaciones de Android,
+iOS y macOS lo ocultan. En Android se retiró el 3 de noviembre de 2026, antes de
+publicar: la excepción de Google Play exige que el 100 % de la propina llegue al
+creador, y PayPal retiene su comisión. En Apple no se ha implementado la
+verificación de storefront ni los permisos regionales. En las tiendas, el apoyo
+se recibe con los tres aportes de facturación de la tienda; el enlace de Ko-fi
+puede difundirse fuera de la app (ficha, web o redes). No se usa el idioma o la ubicación del dispositivo
 para inferir la tienda del comprador.
 
 El 3 de noviembre de 2026 se desactivaron las mensualidades de Ko-fi y se retiró
@@ -226,8 +230,7 @@ Play; no se ha subido a Play Console.
 
 Al abrir la app, a partir del tercer inicio, se muestra un diálogo personal del
 desarrollador («Tu apoyo es muy importante») como máximo una vez cada 7 días.
-«Sí, quiero aportar» lleva a Ajustes, donde están los aportes de la tienda y,
-fuera de iOS/macOS, el enlace a Ko-fi. «Ahora no» lo cierra hasta el siguiente
-periodo. No se muestra a quien ya tiene el beneficio sin anuncios ni cuando la
-tienda no está disponible. La lógica vive en `SubscriptionPromoCoordinator` y
+«Sí, quiero aportar» lleva a Ajustes, donde están los aportes de la tienda.
+«Ahora no» lo cierra hasta el siguiente periodo. No se muestra a quien ya
+tiene el beneficio sin anuncios ni cuando la tienda no está disponible. La lógica vive en `SubscriptionPromoCoordinator` y
 `SubscriptionPromoListener`.

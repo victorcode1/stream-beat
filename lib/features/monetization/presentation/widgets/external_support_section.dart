@@ -11,9 +11,12 @@ class ExternalSupportSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Apple builds need a separate storefront/entitlement implementation.
+    // Store builds must not link to external tips: Google Play only exempts
+    // tips where 100% reaches the creator, and PayPal keeps a fee. Apple
+    // needs a separate storefront/entitlement implementation.
     if (!kIsWeb &&
-        (defaultTargetPlatform == TargetPlatform.iOS ||
+        (defaultTargetPlatform == TargetPlatform.android ||
+            defaultTargetPlatform == TargetPlatform.iOS ||
             defaultTargetPlatform == TargetPlatform.macOS)) {
       return const SizedBox.shrink();
     }
