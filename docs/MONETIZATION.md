@@ -2,7 +2,9 @@
 
 StreamBeat usa un modelo freemium deliberadamente discreto:
 
-- La versión gratuita muestra como máximo un banner adaptativo de AdMob.
+- La versión gratuita muestra como máximo un banner adaptable anclado grande de
+  AdMob, a todo el ancho de la pantalla. Su altura se resuelve antes de pedir el
+  anuncio para reservar el espacio; si el SDK no la da, se usa el de 320×50.
 - El banner no cubre los controles y puede aparecer durante la reproducción.
 - Aportes voluntarios de US$0.99, US$2.99 y US$4.99 (precio base estadounidense;
   la tienda muestra el precio y moneda de cada región).

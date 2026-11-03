@@ -17,15 +17,20 @@ void main() {
   final binding = TestWidgetsFlutterBinding.ensureInitialized();
   final calls = <MethodCall>[];
   late StreamController<SubscriptionAccess> access;
+  num? adaptiveHeight;
 
   setUp(() async {
     calls.clear();
+    adaptiveHeight = 90;
     access = StreamController<SubscriptionAccess>();
     instanceManager = AdInstanceManager('plugins.flutter.io/google_mobile_ads');
     binding.defaultBinaryMessenger.setMockMethodCallHandler(
       instanceManager.channel,
       (call) async {
         calls.add(call);
+        if (call.method == 'AdSize#getLargeAnchoredAdaptiveBannerAdSize') {
+          return adaptiveHeight;
+        }
         return null;
       },
     );
@@ -63,6 +68,15 @@ void main() {
     access.add(const SubscriptionAccess.free());
     await tester.pump();
     await tester.pump();
+    await tester.pump();
+  }
+
+  Map<dynamic, dynamic> loadedSize() {
+    final args =
+        calls.lastWhere((call) => call.method == 'loadBannerAd').arguments
+            as Map;
+    final size = args['size'] as AdSize;
+    return {'width': size.width, 'height': size.height};
   }
 
   BannerAd currentAd() {
@@ -104,6 +118,36 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     },
   );
+
+  testWidgets('requests a full-width adaptive banner and reserves its height', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(412, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await mount(tester);
+    // The codec sends only the width; the SDK resolves the same height natively.
+    expect(loadedSize()['width'], 412);
+    expect(
+      (calls.lastWhere((c) => c.method == 'loadBannerAd').arguments
+          as Map)['size'],
+      isA<AnchoredAdaptiveBannerAdSize>(),
+    );
+    expect(tester.getSize(find.byType(RespectfulBannerSlot)).height, 114);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('falls back to the standard banner without adaptive size', (
+    tester,
+  ) async {
+    adaptiveHeight = null;
+    await mount(tester);
+    expect(loadedSize(), {
+      'width': AdSize.banner.width,
+      'height': AdSize.banner.height,
+    });
+    await tester.pumpWidget(const SizedBox());
+  });
 
   testWidgets('does not request ads without consent', (tester) async {
     await mount(tester, consent: false);

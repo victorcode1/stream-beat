@@ -14,7 +14,7 @@ funciones de monetización usan servicios desacoplados, sin cuenta de StreamBeat
 - RevenueCat valida los aportes, las compras anteriores y la restauración mediante Google Play Billing o Apple In-App Purchase.
 - En Android, web y escritorio no Apple, «Aportar otro importe» abre Ko-fi en el navegador para apoyar voluntariamente desde US$1. Este apoyo externo no quita anuncios ni desbloquea funciones. El enlace permanece oculto en las compilaciones nativas de iOS y macOS.
 - Desde esta versión la app no ejecuta la infraestructura ni las migraciones históricas de copia en la nube. Esta versión no borra por sí misma copias remotas guardadas antes ni retira la infraestructura remota.
-- AdMob muestra como máximo un banner compacto, separado de los controles, también durante la reproducción con la app en primer plano. Se oculta para usuarios Premium y libera el anuncio al pasar a segundo plano.
+- AdMob muestra como máximo un banner adaptable anclado a todo el ancho, separado de los controles, también durante la reproducción con la app en primer plano. Se oculta para usuarios Premium y libera el anuncio al pasar a segundo plano.
 
 La rama main conserva las funciones de búsqueda y reproducción basadas en YouTube. La rama store se prepara como una experiencia centrada únicamente en estaciones de radio.
 

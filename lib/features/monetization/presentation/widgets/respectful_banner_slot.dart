@@ -8,8 +8,11 @@ import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-/// Un banner compacto separado de los controles. Escuchar no lo oculta;
-/// pasar a segundo plano libera el anuncio sin tocar la sesion de audio.
+/// Un banner adaptable anclado, separado de los controles. Escuchar no lo
+/// oculta; pasar a segundo plano libera el anuncio sin tocar la sesion de audio.
+///
+/// El tamano se resuelve antes de pedir el anuncio para reservar su altura y
+/// que los controles no se desplacen al llegar.
 class RespectfulBannerSlot extends ConsumerStatefulWidget {
   const RespectfulBannerSlot({super.key});
 
@@ -21,6 +24,8 @@ class RespectfulBannerSlot extends ConsumerStatefulWidget {
 class _RespectfulBannerSlotState extends ConsumerState<RespectfulBannerSlot>
     with WidgetsBindingObserver {
   late bool _foreground;
+  int? _sizeWidth;
+  AdSize? _size;
 
   @override
   void initState() {
@@ -49,16 +54,33 @@ class _RespectfulBannerSlotState extends ConsumerState<RespectfulBannerSlot>
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        if (constraints.maxWidth < AdSize.banner.width) {
-          return const SizedBox.shrink();
-        }
+        final width = constraints.maxWidth.truncate();
+        if (width < AdSize.banner.width) return const SizedBox.shrink();
+        if (_sizeWidth != width) _resolveSize(width);
+        final size = _size;
         // Reservar altura antes de cargar evita desplazar los botones al llegar
         // el anuncio. El espacio se conserva al abrir/cerrar otra aplicacion.
         return SizedBox(
-          height: AdSize.banner.height + 24,
-          child: _foreground ? const _CompactBanner() : null,
+          height: (size?.height ?? AdSize.banner.height) + 24.0,
+          child: _foreground && size != null
+              ? _AnchoredBanner(key: ValueKey(size), size: size)
+              : null,
         );
       },
+    );
+  }
+
+  void _resolveSize(int width) {
+    _sizeWidth = width;
+    unawaited(
+      AdSize.getLargeAnchoredAdaptiveBannerAdSize(width)
+          .then<AdSize?>((size) => size)
+          .catchError((Object _) => null)
+          .then((size) {
+            if (!mounted || _sizeWidth != width) return;
+            // Sin tamano adaptable, el banner estandar mantiene el ingreso.
+            setState(() => _size = size ?? AdSize.banner);
+          }),
     );
   }
 
@@ -69,14 +91,16 @@ class _RespectfulBannerSlotState extends ConsumerState<RespectfulBannerSlot>
   }
 }
 
-class _CompactBanner extends ConsumerStatefulWidget {
-  const _CompactBanner();
+class _AnchoredBanner extends ConsumerStatefulWidget {
+  const _AnchoredBanner({required this.size, super.key});
+
+  final AdSize size;
 
   @override
-  ConsumerState<_CompactBanner> createState() => _CompactBannerState();
+  ConsumerState<_AnchoredBanner> createState() => _AnchoredBannerState();
 }
 
-class _CompactBannerState extends ConsumerState<_CompactBanner>
+class _AnchoredBannerState extends ConsumerState<_AnchoredBanner>
     with WidgetsBindingObserver {
   BannerAd? _banner;
   bool _loaded = false;
@@ -121,8 +145,8 @@ class _CompactBannerState extends ConsumerState<_CompactBanner>
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: Center(
         child: SizedBox(
-          width: AdSize.banner.width.toDouble(),
-          height: AdSize.banner.height.toDouble(),
+          width: widget.size.width.toDouble(),
+          height: widget.size.height.toDouble(),
           child: AdWidget(ad: banner),
         ),
       ),
@@ -133,7 +157,7 @@ class _CompactBannerState extends ConsumerState<_CompactBanner>
     final banner = BannerAd(
       adUnitId: AppEnvironment.admobBannerId,
       request: const AdRequest(),
-      size: AdSize.banner,
+      size: widget.size,
       listener: BannerAdListener(
         onAdLoaded: (ad) {
           if (!mounted || !identical(_banner, ad)) return;
