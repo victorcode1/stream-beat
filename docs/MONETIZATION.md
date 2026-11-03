@@ -224,7 +224,13 @@ Ajustes mostró «Apoyar StreamBeat» y «Aportar otro importe»; al pulsarlo se
 abrió `ko-fi.com/streambeat` en el navegador externo con la página de StreamBeat
 cargada y sin iniciar ninguna compra de la tienda. También se generó
 `build/app/outputs/bundle/release/app-release.aab` (versionCode 27) para Google
-Play; no se ha subido a Play Console.
+Play. Esa prueba incluía el botón de Ko-fi, que después se ocultó en Android.
+
+El 3 de noviembre de 2026 se subió a Play Console el AAB 27 definitivo (sin
+Ko-fi en Android y con el recordatorio de 7 días), como «1.1.17 (27) · Apoyo y
+biblioteca local», en producción al 100 % y en todos los países, y se envió a
+revisión. La publicación administrada está desactivada: se publicará al
+aprobarse.
 
 ## Recordatorio de apoyo cada 7 días
 
