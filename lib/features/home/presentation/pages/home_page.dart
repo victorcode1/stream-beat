@@ -6,6 +6,7 @@ import 'package:flow_music/features/home/presentation/widgets/home_desktop_top_b
 import 'package:flow_music/features/home/presentation/widgets/home_mobile_app_bar.dart';
 import 'package:flow_music/features/home/presentation/widgets/home_mobile_bottom_bar.dart';
 import 'package:flow_music/features/home/presentation/widgets/home_page_content.dart';
+import 'package:flow_music/features/monetization/presentation/widgets/exit_confirmation_scope.dart';
 import 'package:flow_music/features/radio/presentation/widgets/radio_station_search_view.dart';
 import 'package:flutter/material.dart' hide SearchDelegate;
 import 'package:go_router/go_router.dart';
@@ -78,6 +79,24 @@ class _HomePageState extends ConsumerState<HomePage> {
       );
     }
 
+    // Back closes an open search first; only then may it leave the app.
+    return PopScope(
+      canPop: !_isSearching,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && _isSearching) _closeSearch();
+      },
+      child: ExitConfirmationScope(
+        enabled: !_isSearching,
+        child: _mobileScaffold(currentPath, searchController, pageContent),
+      ),
+    );
+  }
+
+  Widget _mobileScaffold(
+    String currentPath,
+    TextEditingController searchController,
+    Widget? pageContent,
+  ) {
     return Scaffold(
       backgroundColor: Colors.transparent,
       // Configuracion y el reproductor traen su propia cabecera. Ambos viven

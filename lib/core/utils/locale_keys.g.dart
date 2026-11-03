@@ -359,4 +359,22 @@ abstract class LocaleKeys {
   static const station_optional_website = 'station_optional_website';
   static const station_invalid_url = 'station_invalid_url';
   static const station_save_error = 'station_save_error';
+  static const exit_dialog_title = 'exit_dialog_title';
+  static const exit_dialog_ad_label = 'exit_dialog_ad_label';
+  static const exit_dialog_cancel = 'exit_dialog_cancel';
+  static const exit_dialog_confirm = 'exit_dialog_confirm';
+  static const radio_alarm_title = 'radio_alarm_title';
+  static const radio_alarm_off = 'radio_alarm_off';
+  static const radio_alarm_switch = 'radio_alarm_switch';
+  static const radio_alarm_hint = 'radio_alarm_hint';
+  static const radio_alarm_repeat = 'radio_alarm_repeat';
+  static const radio_alarm_once = 'radio_alarm_once';
+  static const radio_alarm_daily = 'radio_alarm_daily';
+  static const radio_alarm_station = 'radio_alarm_station';
+  static const radio_alarm_no_favorites = 'radio_alarm_no_favorites';
+  static const radio_alarm_next = 'radio_alarm_next';
+  static const radio_alarm_saved = 'radio_alarm_saved';
+  static const radio_alarm_inexact = 'radio_alarm_inexact';
+  static const radio_alarm_permission_denied = 'radio_alarm_permission_denied';
+  static const radio_alarm_failed = 'radio_alarm_failed';
 }

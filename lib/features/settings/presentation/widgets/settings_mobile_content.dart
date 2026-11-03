@@ -2,6 +2,8 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flow_music/core/utils/locale_keys.g.dart';
 import 'package:flow_music/features/daily_recommendations/domain/repositories/daily_recommendation_repository.dart';
 import 'package:flow_music/features/daily_recommendations/presentation/providers/daily_recommendation_providers.dart';
+import 'package:flow_music/features/radio_alarm/presentation/pages/radio_alarm_page.dart';
+import 'package:flow_music/features/radio_alarm/presentation/providers/radio_alarm_providers.dart';
 import 'package:flow_music/features/monetization/presentation/widgets/monetization_settings_card.dart';
 import 'package:flow_music/features/settings/presentation/controllers/accent_color_controller.dart';
 import 'package:flow_music/features/settings/presentation/controllers/autoplay_enabled_controller.dart';
@@ -121,6 +123,10 @@ class SettingsMobileContent extends ConsumerWidget {
               ],
             ),
           ),
+          if (ref.read(radioAlarmControllerProvider.notifier).isSupported) ...[
+            const SizedBox(height: 16),
+            const RadioAlarmEntry(),
+          ],
           const SizedBox(height: 16),
           const StationRightsEntry(),
           const SizedBox(height: 14),
