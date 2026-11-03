@@ -1,18 +1,15 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flow_music/core/utils/locale_keys.g.dart';
-import 'package:flow_music/features/account/domain/repositories/auth_repository.dart';
-import 'package:flow_music/features/account/presentation/providers/account_providers.dart';
-import 'package:flow_music/features/account/presentation/providers/local_user_data_providers.dart';
 import 'package:flow_music/features/account/presentation/widgets/local_library_tools.dart';
 import 'package:flow_music/features/monetization/domain/services/subscription_links.dart';
 import 'package:flow_music/features/monetization/presentation/widgets/subscription_legal_footer.dart';
+import 'package:flow_music/features/monetization/presentation/widgets/external_support_section.dart';
 import 'package:flow_music/features/monetization/domain/entities/subscription_access.dart';
 import 'package:flow_music/features/monetization/domain/repositories/subscription_repository.dart';
 import 'package:flow_music/features/monetization/presentation/providers/ad_providers.dart';
 import 'package:flow_music/features/monetization/presentation/providers/monetization_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class MonetizationSettingsCard extends ConsumerStatefulWidget {
@@ -30,11 +27,9 @@ class _MonetizationSettingsCardState
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final user = ref.watch(authUserProvider).value;
     final access = ref.watch(subscriptionAccessProvider).value;
     final offersState = ref.watch(premiumOffersProvider);
     final offers = offersState.value ?? const <PremiumOffer>[];
-    final authAvailable = ref.watch(authRepositoryProvider).isAvailable;
     final active = access?.isActive ?? false;
     final monthlyActive = access?.hasMonthlySubscription ?? false;
     final managementUrl = SubscriptionLinks.management(access);
@@ -103,17 +98,6 @@ class _MonetizationSettingsCardState
                 ),
             ],
           ),
-          if (user != null) ...[
-            const SizedBox(height: 14),
-            Text(
-              user.email,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
-            ),
-          ],
           const SizedBox(height: 16),
           if (!serviceAvailable) ...[
             Text(
@@ -122,31 +106,6 @@ class _MonetizationSettingsCardState
                 context,
               ).textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
             ),
-            if (authAvailable && user == null) ...[
-              const SizedBox(height: 12),
-              OutlinedButton.icon(
-                onPressed: _busy ? null : _showAccountSheet,
-                icon: const Icon(Icons.login_rounded),
-                label: Text(LocaleKeys.auth_sign_in_button.tr()),
-              ),
-            ],
-            if (user != null) ...[
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                children: [
-                  TextButton(
-                    onPressed: _busy ? null : _signOut,
-                    child: Text(LocaleKeys.auth_sign_out.tr()),
-                  ),
-                  TextButton(
-                    onPressed: _busy ? null : _deleteAccount,
-                    style: TextButton.styleFrom(foregroundColor: colors.error),
-                    child: Text(LocaleKeys.auth_delete_account.tr()),
-                  ),
-                ],
-              ),
-            ],
           ] else
             Wrap(
               spacing: 8,
@@ -184,33 +143,12 @@ class _MonetizationSettingsCardState
                   onPressed: _busy ? null : _restore,
                   child: Text(LocaleKeys.restore_purchase.tr()),
                 ),
-                if (authAvailable && user == null)
-                  TextButton.icon(
-                    onPressed: _busy ? null : _showAccountSheet,
-                    icon: const Icon(Icons.login_rounded),
-                    label: Text(LocaleKeys.auth_sign_in_button.tr()),
-                  ),
-                if (user != null)
-                  TextButton(
-                    onPressed: _busy ? null : _signOut,
-                    child: Text(LocaleKeys.auth_sign_out.tr()),
-                  ),
-                if (user != null)
-                  TextButton(
-                    onPressed: _busy ? null : _deleteAccount,
-                    style: TextButton.styleFrom(foregroundColor: colors.error),
-                    child: Text(LocaleKeys.auth_delete_account.tr()),
-                  ),
               ],
             ),
-          if (authAvailable && user == null) ...[
-            const SizedBox(height: 12),
-            Text(
-              LocaleKeys.account_subscription_reason.tr(),
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ],
           const SizedBox(height: 8),
+          ExternalSupportSection(
+            onOpen: _busy ? null : () => _openLink(SubscriptionLinks.support),
+          ),
           const LocalLibraryTools(),
           if (monthlyActive && managementUrl != null)
             TextButton.icon(
@@ -234,15 +172,6 @@ class _MonetizationSettingsCardState
     } catch (_) {
       if (mounted) _showMessage(LocaleKeys.subscription_link_failed.tr());
     }
-  }
-
-  Future<void> _showAccountSheet() {
-    return showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (_) => const _AccountSheet(),
-    );
   }
 
   Future<void> _purchase(PremiumOfferKind kind) async {
@@ -279,146 +208,6 @@ class _MonetizationSettingsCardState
     }
   }
 
-  Future<void> _signOut() async {
-    final deleteAccountData = await _showSignOutOptions();
-    if (deleteAccountData == null || !mounted) return;
-    if (deleteAccountData && !await _confirmAccountDeletionOnSignOut()) return;
-    if (!mounted) return;
-
-    setState(() => _busy = true);
-    try {
-      if (deleteAccountData) {
-        await ref.read(accountSessionActionsProvider).deleteAccount();
-      } else {
-        await ref.read(accountSessionActionsProvider).signOut();
-      }
-      if (mounted) {
-        _showMessage(
-          deleteAccountData
-              ? LocaleKeys.auth_account_deleted.tr()
-              : LocaleKeys.auth_signed_out.tr(),
-        );
-      }
-    } on AuthFailure catch (error) {
-      if (mounted) {
-        _showMessage(
-          error.code == 'local_rate_limit' ? error.message.tr() : error.message,
-        );
-      }
-    } catch (_) {
-      if (mounted) _showMessage(LocaleKeys.user_data_sync_failed.tr());
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  Future<bool?> _showSignOutOptions() {
-    var deleteAccountData = false;
-    return showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: Text(LocaleKeys.auth_sign_out_title.tr()),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(LocaleKeys.auth_sign_out_message.tr()),
-              const SizedBox(height: 14),
-              CheckboxListTile(
-                contentPadding: EdgeInsets.zero,
-                value: deleteAccountData,
-                onChanged: (value) =>
-                    setDialogState(() => deleteAccountData = value ?? false),
-                title: Text(LocaleKeys.auth_sign_out_delete_synced_data.tr()),
-                subtitle: Text(
-                  LocaleKeys.auth_sign_out_delete_synced_data_hint.tr(),
-                ),
-                controlAffinity: ListTileControlAffinity.leading,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: Text(LocaleKeys.cancel.tr()),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(dialogContext, deleteAccountData),
-              child: Text(LocaleKeys.auth_sign_out.tr()),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<bool> _confirmAccountDeletionOnSignOut() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        icon: Icon(
-          Icons.warning_amber_rounded,
-          color: Theme.of(dialogContext).colorScheme.error,
-        ),
-        title: Text(LocaleKeys.auth_sign_out_delete_warning_title.tr()),
-        content: Text(LocaleKeys.auth_sign_out_delete_warning_message.tr()),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: Text(LocaleKeys.cancel.tr()),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(dialogContext).colorScheme.error,
-            ),
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: Text(LocaleKeys.auth_sign_out_delete_warning_action.tr()),
-          ),
-        ],
-      ),
-    );
-    return confirmed ?? false;
-  }
-
-  Future<void> _deleteAccount() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(LocaleKeys.auth_delete_account_title.tr()),
-        content: Text(LocaleKeys.auth_delete_account_message.tr()),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: Text(LocaleKeys.cancel.tr()),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(dialogContext).colorScheme.error,
-            ),
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: Text(LocaleKeys.delete.tr()),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true || !mounted) return;
-
-    setState(() => _busy = true);
-    try {
-      await ref.read(accountSessionActionsProvider).deleteAccount();
-      if (mounted) _showMessage(LocaleKeys.auth_account_deleted.tr());
-    } on AuthFailure catch (error) {
-      if (mounted) {
-        _showMessage(
-          error.code == 'local_rate_limit' ? error.message.tr() : error.message,
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
   void _showMessage(String message) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
@@ -442,335 +231,5 @@ class _PrivacyOptionsButton extends ConsumerWidget {
         label: Text(LocaleKeys.ad_privacy_options.tr()),
       ),
     );
-  }
-}
-
-class _AccountSheet extends ConsumerStatefulWidget {
-  const _AccountSheet();
-
-  @override
-  ConsumerState<_AccountSheet> createState() => _AccountSheetState();
-}
-
-class _AccountSheetState extends ConsumerState<_AccountSheet> {
-  final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  bool _register = false;
-  bool _busy = false;
-  bool _googleBusy = false;
-  bool _appleBusy = false;
-  bool _obscurePassword = true;
-
-  @override
-  Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
-    final googleAuthAvailable = ref.watch(
-      googleAuthGatewayProvider.select((gateway) => gateway.isAvailable),
-    );
-    final appleAuthAvailable = ref.watch(
-      appleAuthGatewayProvider.select((gateway) => gateway.isAvailable),
-    );
-    return SafeArea(
-      child: SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(20, 4, 20, 20 + bottomInset),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                _register
-                    ? LocaleKeys.auth_register_title.tr()
-                    : LocaleKeys.auth_sign_in_title.tr(),
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                LocaleKeys.account_subscription_reason.tr(),
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 18),
-              if (appleAuthAvailable) ...[
-                SignInWithAppleButton(
-                  onPressed: _busy ? null : _signInWithApple,
-                  text: _register
-                      ? LocaleKeys.auth_register_with_apple.tr()
-                      : LocaleKeys.auth_sign_in_with_apple.tr(),
-                  iconAlignment: SignInWithAppleIconAlignment.left,
-                ),
-                const SizedBox(height: 12),
-              ],
-              if (googleAuthAvailable) ...[
-                OutlinedButton.icon(
-                  onPressed: _busy ? null : _signInWithGoogle,
-                  icon: _googleBusy
-                      ? const SizedBox.square(
-                          dimension: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.g_mobiledata_rounded, size: 28),
-                  label: Text(
-                    _register
-                        ? LocaleKeys.auth_register_with_google.tr()
-                        : LocaleKeys.auth_sign_in_with_google.tr(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-              ],
-              if (appleAuthAvailable || googleAuthAvailable) ...[
-                Row(
-                  children: [
-                    const Expanded(child: Divider()),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: Text(LocaleKeys.auth_alternative_divider.tr()),
-                    ),
-                    const Expanded(child: Divider()),
-                  ],
-                ),
-                const SizedBox(height: 14),
-              ],
-              SegmentedButton<bool>(
-                segments: [
-                  ButtonSegment(
-                    value: false,
-                    label: Text(LocaleKeys.auth_sign_in_tab.tr()),
-                  ),
-                  ButtonSegment(
-                    value: true,
-                    label: Text(LocaleKeys.auth_register_tab.tr()),
-                  ),
-                ],
-                selected: {_register},
-                onSelectionChanged: _busy
-                    ? null
-                    : (selection) =>
-                          setState(() => _register = selection.single),
-              ),
-              const SizedBox(height: 16),
-              if (_register) ...[
-                TextFormField(
-                  controller: _nameController,
-                  textInputAction: TextInputAction.next,
-                  autofillHints: const [AutofillHints.name],
-                  decoration: InputDecoration(
-                    labelText: LocaleKeys.auth_name_label.tr(),
-                    prefixIcon: const Icon(Icons.person_outline_rounded),
-                  ),
-                ),
-                const SizedBox(height: 12),
-              ],
-              TextFormField(
-                controller: _emailController,
-                keyboardType: TextInputType.emailAddress,
-                textInputAction: TextInputAction.next,
-                autofillHints: const [AutofillHints.email],
-                decoration: InputDecoration(
-                  labelText: LocaleKeys.auth_email_label.tr(),
-                  prefixIcon: const Icon(Icons.email_outlined),
-                ),
-                validator: _validateEmail,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _passwordController,
-                obscureText: _obscurePassword,
-                textInputAction: TextInputAction.done,
-                autofillHints: [
-                  _register
-                      ? AutofillHints.newPassword
-                      : AutofillHints.password,
-                ],
-                decoration: InputDecoration(
-                  labelText: LocaleKeys.auth_password_label.tr(),
-                  prefixIcon: const Icon(Icons.lock_outline_rounded),
-                  suffixIcon: IconButton(
-                    onPressed: () =>
-                        setState(() => _obscurePassword = !_obscurePassword),
-                    icon: Icon(
-                      _obscurePassword
-                          ? Icons.visibility_outlined
-                          : Icons.visibility_off_outlined,
-                    ),
-                  ),
-                ),
-                validator: _validatePassword,
-                onFieldSubmitted: (_) => _submit(),
-              ),
-              if (!_register)
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: _busy ? null : _resetPassword,
-                    child: Text(LocaleKeys.auth_forgot_password.tr()),
-                  ),
-                )
-              else
-                const SizedBox(height: 16),
-              FilledButton(
-                onPressed: _busy ? null : _submit,
-                child: _busy && !_googleBusy && !_appleBusy
-                    ? const SizedBox.square(
-                        dimension: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Text(
-                        _register
-                            ? LocaleKeys.auth_create_account.tr()
-                            : LocaleKeys.auth_sign_in_button.tr(),
-                      ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _signInWithGoogle() async {
-    if (_busy) return;
-    setState(() {
-      _busy = true;
-      _googleBusy = true;
-    });
-    try {
-      await ref.read(authRepositoryProvider).signInWithGoogle();
-      if (mounted) Navigator.of(context).pop();
-    } on AuthFailure catch (error) {
-      if (mounted && error.code != 'cancelled') {
-        _showMessage(
-          error.code == 'local_rate_limit' ? error.message.tr() : error.message,
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _busy = false;
-          _googleBusy = false;
-        });
-      }
-    }
-  }
-
-  Future<void> _signInWithApple() async {
-    if (_busy) return;
-    setState(() {
-      _busy = true;
-      _appleBusy = true;
-    });
-    try {
-      await ref.read(authRepositoryProvider).signInWithApple();
-      if (mounted) Navigator.of(context).pop();
-    } on AuthFailure catch (error) {
-      if (mounted && error.code != 'cancelled') {
-        _showMessage(
-          error.code == 'local_rate_limit' ? error.message.tr() : error.message,
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _busy = false;
-          _appleBusy = false;
-        });
-      }
-    }
-  }
-
-  String? _validateEmail(String? value) {
-    final email = value?.trim() ?? '';
-    if (email.isEmpty || !email.contains('@') || !email.contains('.')) {
-      return LocaleKeys.auth_invalid_email.tr();
-    }
-    return null;
-  }
-
-  String? _validatePassword(String? value) {
-    if ((value ?? '').length < 6) {
-      return LocaleKeys.auth_password_too_short.tr();
-    }
-    return null;
-  }
-
-  Future<void> _submit() async {
-    if (_busy || !(_formKey.currentState?.validate() ?? false)) return;
-    setState(() => _busy = true);
-    final repository = ref.read(authRepositoryProvider);
-    try {
-      if (_register) {
-        final result = await repository.signUp(
-          email: _emailController.text,
-          password: _passwordController.text,
-          displayName: _nameController.text,
-        );
-        if (!mounted) return;
-        Navigator.of(context).pop();
-        _showMessage(
-          result.requiresConfirmation
-              ? LocaleKeys.auth_confirmation_sent.tr()
-              : LocaleKeys.auth_account_created.tr(),
-        );
-      } else {
-        await repository.signIn(
-          email: _emailController.text,
-          password: _passwordController.text,
-        );
-        if (mounted) Navigator.of(context).pop();
-      }
-    } on AuthFailure catch (error) {
-      if (mounted) {
-        _showMessage(
-          error.code == 'local_rate_limit' ? error.message.tr() : error.message,
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  Future<void> _resetPassword() async {
-    final emailError = _validateEmail(_emailController.text);
-    if (emailError != null) {
-      _showMessage(emailError);
-      return;
-    }
-    setState(() => _busy = true);
-    try {
-      await ref
-          .read(authRepositoryProvider)
-          .sendPasswordReset(_emailController.text);
-      if (mounted) {
-        _showMessage(LocaleKeys.auth_password_reset_sent.tr());
-      }
-    } on AuthFailure catch (error) {
-      if (mounted) {
-        _showMessage(
-          error.code == 'local_rate_limit' ? error.message.tr() : error.message,
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  void _showMessage(String message) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
-  }
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
   }
 }

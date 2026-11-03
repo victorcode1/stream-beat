@@ -5,7 +5,7 @@ import 'package:flow_music/features/settings/data/settings_local_data_source.dar
 import 'package:flow_music/features/settings/data/settings_storage.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
 
-/// Account libraries are archived only in this device's existing Hive box.
+/// Conserva la biblioteca del dispositivo y sus archivos locales históricos.
 class UserDataLocalStore {
   const UserDataLocalStore({
     this.favorites = const RadioFavoritesRepository(),
@@ -39,45 +39,14 @@ class UserDataLocalStore {
   Future<void> archiveCurrent() =>
       _metadata.put(_archiveKey(ownerId), {'snapshot': read().toJson()});
 
-  Future<bool> switchUser(String? userId) async {
+  /// Recupera escrituras pendientes y conserva la biblioteca visible al retirar
+  /// las cuentas. Los archivos de otras bibliotecas históricas no se eliminan.
+  Future<bool> prepareDeviceLibrary() async {
     final recovered = await _recoverPendingSwitch();
-    final previous = ownerId;
-    if (previous == userId) return recovered;
-    final guest = previous == null ? read() : null;
-    final archived = _metadata.get(_archiveKey(userId));
-    // Decode before changing disk state. Historical cloud fields are ignored.
-    final restored = _archivedSnapshot(archived);
-    final adoptedGuest = restored == null && guest != null && userId != null;
-    final target =
-        restored ??
-        (adoptedGuest ? guest : null) ??
-        const LocalUserData.empty();
+    if (ownerId == null) return recovered;
     await archiveCurrent();
-    // A persisted target makes an interrupted switch recoverable without ever
-    // treating a partially written account library as the guest's library.
-    await _metadata.put(_pendingSwitchKey, {
-      'user_id': userId,
-      'snapshot': target.toJson(),
-      'adopted_guest': adoptedGuest,
-    });
-    await _recoverPendingSwitch();
+    await _metadata.delete(_ownerKey);
     return true;
-  }
-
-  Future<void> deleteAccount(String? userId) async {
-    if (userId == null) return;
-    await _recoverPendingSwitch();
-    if (ownerId == userId) {
-      final guest = _archivedSnapshot(_metadata.get(_archiveKey(null)));
-      await _metadata.put(_pendingSwitchKey, {
-        'user_id': null,
-        'snapshot': (guest ?? const LocalUserData.empty()).toJson(),
-        'deleted_user_id': userId,
-      });
-      await _recoverPendingSwitch();
-    } else {
-      await _metadata.delete(_archiveKey(userId));
-    }
   }
 
   LocalUserData? _archivedSnapshot(Object? archive) =>

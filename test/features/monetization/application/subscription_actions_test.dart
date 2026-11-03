@@ -1,5 +1,3 @@
-import 'package:flow_music/features/account/domain/entities/app_user.dart';
-import 'package:flow_music/features/account/domain/repositories/auth_repository.dart';
 import 'package:flow_music/features/monetization/application/subscription_actions.dart';
 import 'package:flow_music/features/monetization/domain/entities/subscription_access.dart';
 import 'package:flow_music/features/monetization/domain/repositories/subscription_repository.dart';
@@ -7,120 +5,27 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   for (final kind in PremiumOfferKind.values) {
-    test('guest can purchase $kind without an account', () async {
+    test('purchase $kind without an account grants permanent access', () async {
       final subscriptions = _FakeSubscriptionRepository();
-      final actions = SubscriptionActions(_FakeAuthRepository(), subscriptions);
-      final access = await actions.purchase(kind);
-      expect(subscriptions.identities, [null]);
+      final access = await SubscriptionActions(subscriptions).purchase(kind);
+      expect(subscriptions.initializeCalls, 1);
       expect(subscriptions.purchasedKinds, [kind]);
       expect(access.isActive, isTrue);
+      expect(access.expiresAt, isNull);
     });
   }
 
-  test('guest can restore without an account', () async {
+  test('restore queries store access without registration', () async {
     final subscriptions = _FakeSubscriptionRepository();
-    final access = await SubscriptionActions(
-      _FakeAuthRepository(),
-      subscriptions,
-    ).restore();
-    expect(subscriptions.identities, [null]);
+    final access = await SubscriptionActions(subscriptions).restore();
+    expect(subscriptions.initializeCalls, 1);
     expect(subscriptions.restoreCalls, 1);
     expect(access.isActive, isTrue);
   });
-
-  test('signed-in restoration uses the account identity', () async {
-    final subscriptions = _FakeSubscriptionRepository();
-    await SubscriptionActions(
-      _FakeAuthRepository(
-        user: const AppUser(id: 'stable-user-id', email: 'user@example.com'),
-      ),
-      subscriptions,
-    ).restore();
-    expect(subscriptions.identities, ['stable-user-id']);
-    expect(subscriptions.restoreCalls, 1);
-  });
-
-  test('purchase identifies RevenueCat with the Supabase user id', () async {
-    final subscriptions = _FakeSubscriptionRepository();
-    final actions = SubscriptionActions(
-      _FakeAuthRepository(
-        user: const AppUser(id: 'stable-user-id', email: 'user@example.com'),
-      ),
-      subscriptions,
-    );
-
-    final access = await actions.purchase(PremiumOfferKind.small);
-
-    expect(subscriptions.identifiedUserId, 'stable-user-id');
-    expect(subscriptions.purchasedKinds, [PremiumOfferKind.small]);
-    expect(access.isActive, isTrue);
-  });
-
-  test('lifetime purchase uses the same stable account entitlement', () async {
-    final subscriptions = _FakeSubscriptionRepository();
-    final actions = SubscriptionActions(
-      _FakeAuthRepository(
-        user: const AppUser(id: 'stable-user-id', email: 'user@example.com'),
-      ),
-      subscriptions,
-    );
-
-    final access = await actions.purchase(PremiumOfferKind.large);
-
-    expect(subscriptions.identifiedUserId, 'stable-user-id');
-    expect(subscriptions.purchasedKinds, [PremiumOfferKind.large]);
-    expect(access.productId, 'streambeat_support_large');
-    expect(access.expiresAt, isNull);
-  });
-}
-
-class _FakeAuthRepository implements AuthRepository {
-  _FakeAuthRepository({this.user});
-
-  final AppUser? user;
-
-  @override
-  Stream<AppUser?> get authStateChanges => Stream.value(user);
-
-  @override
-  AppUser? get currentUser => user;
-
-  @override
-  bool get isAvailable => true;
-
-  @override
-  Future<void> deleteAccount() async {}
-
-  @override
-  Future<void> sendPasswordReset(String email) async {}
-
-  @override
-  Future<AppUser> signIn({required String email, required String password}) =>
-      throw UnimplementedError();
-
-  @override
-  Future<AppUser> signInWithGoogle() => throw UnimplementedError();
-
-  @override
-  Future<AppUser> signInWithApple() => throw UnimplementedError();
-
-  @override
-  Future<void> signOut() async {}
-
-  @override
-  Future<SignUpResult> signUp({
-    required String email,
-    required String password,
-    String? displayName,
-  }) => throw UnimplementedError();
-
-  @override
-  Future<void> updatePassword(String password) async {}
 }
 
 class _FakeSubscriptionRepository implements SubscriptionRepository {
-  String? identifiedUserId;
-  final identities = <String?>[];
+  int initializeCalls = 0;
   int restoreCalls = 0;
   final purchasedKinds = <PremiumOfferKind>[];
 
@@ -131,14 +36,9 @@ class _FakeSubscriptionRepository implements SubscriptionRepository {
   void dispose() {}
 
   @override
-  Future<SubscriptionAccess> identify(String? userId) async {
-    identifiedUserId = userId;
-    identities.add(userId);
-    return const SubscriptionAccess.free();
+  Future<void> initialize() async {
+    initializeCalls++;
   }
-
-  @override
-  Future<void> initialize({String? userId}) async {}
 
   @override
   Future<List<PremiumOffer>> loadOffers() async => const [

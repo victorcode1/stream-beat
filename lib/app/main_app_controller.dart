@@ -50,7 +50,6 @@ class MainAppController {
   }
 
   void dispose() {
-    _monetizationCoordinator.dispose();
     _localUserDataCoordinator.dispose();
     if (flowAudioHandler.onTrackComplete == handleTrackComplete) {
       flowAudioHandler.onTrackComplete = null;
@@ -63,10 +62,9 @@ class MainAppController {
     }
   }
 
-  Future<void> refreshAccount() async {
+  Future<void> refreshPurchases() async {
     try {
       await ref.read(subscriptionRepositoryProvider).refresh();
-      await _localUserDataCoordinator.selectCurrentUser();
     } catch (_) {
       // A network failure leaves local changes available for the next resume.
     }

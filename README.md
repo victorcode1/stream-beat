@@ -5,15 +5,14 @@ Aplicación Flutter para descubrir música, reproducir audio y explorar estacion
 ## Datos y privacidad
 
 La reproducción y las preferencias siguen funcionando de forma local. Las
-funciones opcionales de cuenta y monetización usan servicios desacoplados:
+funciones de monetización usan servicios desacoplados, sin cuenta de StreamBeat:
 
-- Favoritos, playlists, historial y preferencias se guardan solo en el dispositivo con Hive y funcionan sin red. No hay respaldo remoto ni sincronización entre dispositivos; ninguna compra o suscripción la habilita. Los aportes solo quitan anuncios.
+- Favoritos, playlists, historial y preferencias se guardan solo en el dispositivo con Hive y funcionan sin red. No hay respaldo remoto ni sincronización entre dispositivos; ninguna compra o suscripción la habilita. Los aportes de las tiendas solo quitan anuncios.
 - La ubicación se solicita solo mientras la app está abierta, para elegir el país de las recomendaciones y centrar el explorador de radio. No se guarda ni se envía a un servidor.
 - La recomendación diaria es opcional y se programa localmente a las 6:00 p. m. con una emisora aleatoria; no requiere un servidor ni ubicación en segundo plano.
 - Las compilaciones `release` envían a Sentry errores y una muestra de trazas de rendimiento para diagnóstico. Sentry permanece desactivado en debug y profile, y la integración no envía información personal por defecto.
-- La cuenta es opcional y sirve para el perfil y las compras: Supabase Auth y PostgreSQL conservan la cuenta y el perfil. El acceso opcional con Google o Apple comparte con StreamBeat el correo, nombre, foto e identificador básico autorizados por el usuario.
 - RevenueCat valida los aportes, las compras anteriores y la restauración mediante Google Play Billing o Apple In-App Purchase.
-- Cerrar sesión archiva localmente la biblioteca bajo la cuenta y la oculta; vuelve a mostrarse al entrar con la misma cuenta en ese dispositivo. Eliminar la cuenta borra también su biblioteca local.
+- En Android, web y escritorio no Apple, «Aportar otro importe» abre Ko-fi en el navegador para apoyar voluntariamente desde US$1. Este apoyo externo no quita anuncios ni desbloquea funciones. El enlace permanece oculto en las compilaciones nativas de iOS y macOS.
 - Desde esta versión la app no ejecuta la infraestructura ni las migraciones históricas de copia en la nube. Esta versión no borra por sí misma copias remotas guardadas antes ni retira la infraestructura remota.
 - AdMob muestra como máximo un banner compacto, separado de los controles, también durante la reproducción con la app en primer plano. Se oculta para usuarios Premium y libera el anuncio al pasar a segundo plano.
 
@@ -30,7 +29,7 @@ La rama main conserva las funciones de búsqueda y reproducción basadas en YouT
     flutter pub get
     flutter run
 
-Para habilitar cuenta, compras Premium y anuncios usa el archivo de ejemplo en
+Para habilitar aportes, restauración de compras y anuncios usa el archivo de ejemplo en
 `config/monetization.example.json`:
 
     cp config/monetization.example.json config/monetization.local.json

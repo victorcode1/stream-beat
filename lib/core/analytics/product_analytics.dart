@@ -3,7 +3,6 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:hive_ce/hive.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 const _anonymousIdKey = 'product_analytics_anonymous_id';
 
@@ -13,19 +12,6 @@ final productAnalyticsProvider = Provider<ProductAnalytics>(
 
 abstract interface class AnalyticsEventSink {
   Future<void> write(Map<String, dynamic> event);
-}
-
-class SupabaseAnalyticsEventSink implements AnalyticsEventSink {
-  const SupabaseAnalyticsEventSink(this._client);
-
-  final SupabaseClient? _client;
-
-  @override
-  Future<void> write(Map<String, dynamic> event) async {
-    final client = _client;
-    if (client == null) return;
-    await client.from('product_analytics_events').insert(event);
-  }
 }
 
 class ProductAnalytics {
@@ -40,7 +26,6 @@ class ProductAnalytics {
        _localeProvider = localeProvider;
 
   factory ProductAnalytics.create({
-    required SupabaseClient? client,
     required Box<dynamic> settingsBox,
     required String version,
     required String buildNumber,
@@ -54,7 +39,7 @@ class ProductAnalytics {
     }
 
     return ProductAnalytics(
-      sink: SupabaseAnalyticsEventSink(client),
+      sink: const _NoopAnalyticsEventSink(),
       anonymousId: anonymousId,
       sessionId: generateAnalyticsUuid(),
       platform: _currentPlatform(),

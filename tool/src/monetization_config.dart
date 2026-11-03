@@ -12,8 +12,6 @@ List<String> validateMonetizationConfig(
   final revenueKey = 'REVENUECAT_${suffix}_API_KEY';
   final bannerKey = 'ADMOB_${suffix}_BANNER_ID';
   final required = [
-    'SUPABASE_URL',
-    'SUPABASE_PUBLISHABLE_KEY',
     revenueKey,
     'REVENUECAT_ENTITLEMENT_ID',
     'REVENUECAT_MONTHLY_PRODUCT_ID',
@@ -22,9 +20,6 @@ List<String> validateMonetizationConfig(
     'REVENUECAT_CONTRIBUTION_MEDIUM_PRODUCT_ID',
     'REVENUECAT_CONTRIBUTION_LARGE_PRODUCT_ID',
     bannerKey,
-    'AUTH_CALLBACK_URL',
-    'GOOGLE_WEB_CLIENT_ID',
-    if (isIos) 'GOOGLE_IOS_CLIENT_ID',
   ];
   String value(String key) =>
       config[key] is String ? (config[key] as String).trim() : '';
@@ -43,19 +38,6 @@ List<String> validateMonetizationConfig(
       errors.add('$key no puede incluirse en la configuración del cliente.');
     }
   }
-  final url = Uri.tryParse(value('SUPABASE_URL'));
-  if (url == null ||
-      url.scheme != 'https' ||
-      url.userInfo.isNotEmpty ||
-      !RegExp(r'^[a-z0-9]+\.supabase\.co$').hasMatch(url.host) ||
-      (url.path.isNotEmpty && url.path != '/') ||
-      url.hasQuery ||
-      url.hasFragment) {
-    errors.add('SUPABASE_URL no es una URL HTTPS de proyecto válida.');
-  }
-  if (!value('SUPABASE_PUBLISHABLE_KEY').startsWith('sb_publishable_')) {
-    errors.add('Usa una clave publicable de Supabase, nunca service_role.');
-  }
   final prefix = isIos ? 'appl_' : 'goog_';
   if (!RegExp('^$prefix[A-Za-z0-9]+\$').hasMatch(value(revenueKey))) {
     errors.add('$revenueKey debe ser una clave pública $prefix*.');
@@ -66,21 +48,6 @@ List<String> validateMonetizationConfig(
       !id.contains('0000000000000000');
   if (!productionAdId(value(bannerKey), '/')) {
     errors.add('$bannerKey no es una unidad de producción válida.');
-  }
-  final oauthPattern = RegExp(r'^\d+-[a-z0-9]+\.apps\.googleusercontent\.com$');
-  for (final key in [
-    'GOOGLE_WEB_CLIENT_ID',
-    if (isIos) 'GOOGLE_IOS_CLIENT_ID',
-  ]) {
-    if (!oauthPattern.hasMatch(value(key))) {
-      errors.add('$key no es un cliente OAuth válido.');
-    }
-  }
-  if (value('AUTH_CALLBACK_URL') !=
-      'com.victorflores.streambeat://auth-callback') {
-    errors.add(
-      'AUTH_CALLBACK_URL debe coincidir con el esquema nativo de StreamBeat.',
-    );
   }
   final expectedProducts = {
     'REVENUECAT_ENTITLEMENT_ID': 'remove_ads',
@@ -114,25 +81,6 @@ List<String> validateMonetizationConfig(
       errors.add(
         'La app de AdMob y el banner iOS pertenecen a editores diferentes.',
       );
-    }
-    final schemes = <String>{};
-    final urlTypes = iosPlist?['CFBundleURLTypes'];
-    if (urlTypes is List) {
-      for (final type in urlTypes.whereType<Map>()) {
-        final items = type['CFBundleURLSchemes'];
-        if (items is List) schemes.addAll(items.whereType<String>());
-      }
-    }
-    final reversedClient = value(
-      'GOOGLE_IOS_CLIENT_ID',
-    ).split('.').reversed.join('.');
-    if (!schemes.contains(reversedClient)) {
-      errors.add(
-        'Info.plist: falta el esquema invertido de GOOGLE_IOS_CLIENT_ID.',
-      );
-    }
-    if (!schemes.contains('com.victorflores.streambeat')) {
-      errors.add('Info.plist: falta el esquema de retorno de autenticación.');
     }
   }
   return errors;

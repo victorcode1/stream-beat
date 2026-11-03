@@ -8,7 +8,6 @@ abstract class LocaleKeys {
   static const library_export_privacy = 'library_export_privacy';
   static const library_export_continue = 'library_export_continue';
   static const library_export_failed = 'library_export_failed';
-  static const auth_local_rate_limit = 'auth_local_rate_limit';
   static const hello = 'hello';
   static const welcome = 'welcome';
   static const play = 'play';
@@ -303,37 +302,6 @@ abstract class LocaleKeys {
   static const share_unavailable = 'share_unavailable';
   static const file_not_found = 'file_not_found';
   static const close = 'close';
-  static const auth_welcome = 'auth_welcome';
-  static const auth_subtitle = 'auth_subtitle';
-  static const auth_sign_in_tab = 'auth_sign_in_tab';
-  static const auth_register_tab = 'auth_register_tab';
-  static const auth_sign_in_title = 'auth_sign_in_title';
-  static const auth_sign_in_hint = 'auth_sign_in_hint';
-  static const auth_register_title = 'auth_register_title';
-  static const auth_register_hint = 'auth_register_hint';
-  static const auth_name_label = 'auth_name_label';
-  static const auth_email_label = 'auth_email_label';
-  static const auth_password_label = 'auth_password_label';
-  static const auth_confirm_password_label = 'auth_confirm_password_label';
-  static const auth_forgot_password = 'auth_forgot_password';
-  static const auth_password_reset_sent = 'auth_password_reset_sent';
-  static const auth_sign_in_button = 'auth_sign_in_button';
-  static const auth_create_account = 'auth_create_account';
-  static const auth_alternative_divider = 'auth_alternative_divider';
-  static const auth_sign_in_with_google = 'auth_sign_in_with_google';
-  static const auth_register_with_google = 'auth_register_with_google';
-  static const auth_sign_in_with_apple = 'auth_sign_in_with_apple';
-  static const auth_register_with_apple = 'auth_register_with_apple';
-  static const auth_action_failed = 'auth_action_failed';
-  static const auth_required_field = 'auth_required_field';
-  static const auth_invalid_email = 'auth_invalid_email';
-  static const auth_password_too_short = 'auth_password_too_short';
-  static const auth_passwords_do_not_match = 'auth_passwords_do_not_match';
-  static const auth_account_title = 'auth_account_title';
-  static const auth_sign_out_title = 'auth_sign_out_title';
-  static const auth_sign_out_message = 'auth_sign_out_message';
-  static const auth_sign_out_action_hint = 'auth_sign_out_action_hint';
-  static const auth_sign_out = 'auth_sign_out';
   static const guest_signup_prompt_title = 'guest_signup_prompt_title';
   static const guest_signup_prompt_message = 'guest_signup_prompt_message';
   static const guest_signup_prompt_action = 'guest_signup_prompt_action';
@@ -352,27 +320,6 @@ abstract class LocaleKeys {
   static const subscription_success = 'subscription_success';
   static const monetization_unavailable = 'monetization_unavailable';
   static const ad_privacy_options = 'ad_privacy_options';
-  static const account_subscription_reason = 'account_subscription_reason';
-  static const auth_confirmation_sent = 'auth_confirmation_sent';
-  static const auth_account_created = 'auth_account_created';
-  static const auth_new_password_title = 'auth_new_password_title';
-  static const auth_update_password = 'auth_update_password';
-  static const auth_password_updated = 'auth_password_updated';
-  static const auth_delete_account = 'auth_delete_account';
-  static const auth_delete_account_title = 'auth_delete_account_title';
-  static const auth_delete_account_message = 'auth_delete_account_message';
-  static const auth_account_deleted = 'auth_account_deleted';
-  static const auth_signed_out = 'auth_signed_out';
-  static const auth_sign_out_delete_synced_data =
-      'auth_sign_out_delete_synced_data';
-  static const auth_sign_out_delete_synced_data_hint =
-      'auth_sign_out_delete_synced_data_hint';
-  static const auth_sign_out_delete_warning_title =
-      'auth_sign_out_delete_warning_title';
-  static const auth_sign_out_delete_warning_message =
-      'auth_sign_out_delete_warning_message';
-  static const auth_sign_out_delete_warning_action =
-      'auth_sign_out_delete_warning_action';
   static const user_data_sync_failed = 'user_data_sync_failed';
   static const subscription_price_unavailable =
       'subscription_price_unavailable';
@@ -390,6 +337,9 @@ abstract class LocaleKeys {
   static const subscription_promo_later = 'subscription_promo_later';
   static const subscription_promo_action = 'subscription_promo_action';
   static const contribution_action = 'contribution_action';
+  static const external_support_title = 'external_support_title';
+  static const external_support_action = 'external_support_action';
+  static const external_support_disclosure = 'external_support_disclosure';
   static const station_unavailable = 'station_unavailable';
   static const station_website = 'station_website';
   static const station_report_removal = 'station_report_removal';

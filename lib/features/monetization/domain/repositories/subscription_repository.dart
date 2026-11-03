@@ -5,9 +5,7 @@ abstract interface class SubscriptionRepository {
 
   Stream<SubscriptionAccess> watchAccess();
 
-  Future<void> initialize({String? userId});
-
-  Future<SubscriptionAccess> identify(String? userId);
+  Future<void> initialize();
 
   Future<List<PremiumOffer>> loadOffers();
 

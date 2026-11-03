@@ -4,8 +4,6 @@ import '../../tool/src/monetization_config.dart';
 
 void main() {
   Map<String, Object?> configuration() => {
-    'SUPABASE_URL': 'https://unitproject.supabase.co',
-    'SUPABASE_PUBLISHABLE_KEY': 'sb_publishable_UnitTestOnly',
     'REVENUECAT_ANDROID_API_KEY': 'goog_UnitTestOnly',
     'REVENUECAT_IOS_API_KEY': 'appl_UnitTestOnly',
     'REVENUECAT_ENTITLEMENT_ID': 'remove_ads',
@@ -16,9 +14,6 @@ void main() {
     'REVENUECAT_CONTRIBUTION_LARGE_PRODUCT_ID': 'streambeat_support_large',
     'ADMOB_ANDROID_BANNER_ID': 'ca-app-pub-1234567890123456/1234567890',
     'ADMOB_IOS_BANNER_ID': 'ca-app-pub-1234567890123456/2345678901',
-    'AUTH_CALLBACK_URL': 'com.victorflores.streambeat://auth-callback',
-    'GOOGLE_WEB_CLIENT_ID': '123456789012-webclient.apps.googleusercontent.com',
-    'GOOGLE_IOS_CLIENT_ID': '123456789012-iosclient.apps.googleusercontent.com',
   };
   Map<String, Object?> plist() => {
     'GADApplicationIdentifier': 'ca-app-pub-1234567890123456~3456789012',
@@ -35,6 +30,34 @@ void main() {
       },
     ],
   };
+
+  test(
+    'monetization works without backend or authentication configuration',
+    () {
+      final config = configuration()
+        ..removeWhere(
+          (key, _) =>
+              key.startsWith('SUPABASE_') ||
+              key.startsWith('GOOGLE_') ||
+              key == 'AUTH_CALLBACK_URL',
+        );
+      expect(
+        validateMonetizationConfig(
+          config,
+          platform: MonetizationPlatform.android,
+        ),
+        isEmpty,
+      );
+      expect(
+        validateMonetizationConfig(
+          config,
+          platform: MonetizationPlatform.ios,
+          iosPlist: plist(),
+        ),
+        isEmpty,
+      );
+    },
+  );
 
   test('Android checks do not require iOS keys', () {
     final config = configuration()
@@ -76,7 +99,7 @@ void main() {
     expect(errors, contains('GADApplicationIdentifier'));
   });
 
-  test('iOS rejects mismatched OAuth callback and AdMob publisher', () {
+  test('iOS rejects mismatched AdMob publisher', () {
     final native = plist()
       ..['CFBundleURLTypes'] = []
       ..['GADApplicationIdentifier'] = 'ca-app-pub-9876543210987654~3456789012';
@@ -86,8 +109,6 @@ void main() {
       iosPlist: native,
     ).join('\n');
     expect(errors, contains('editores diferentes'));
-    expect(errors, contains('esquema invertido'));
-    expect(errors, contains('esquema de retorno'));
   });
 
   test('iOS requires both location privacy purpose strings', () {
@@ -106,7 +127,7 @@ void main() {
   test('placeholder and non-string values fail without casting errors', () {
     final config = configuration()
       ..['REVENUECAT_ANDROID_API_KEY'] = 'goog_YOUR_PUBLIC_SDK_KEY'
-      ..['GOOGLE_WEB_CLIENT_ID'] = 123;
+      ..['REVENUECAT_IOS_API_KEY'] = 123;
     expect(
       validateMonetizationConfig(
         config,

@@ -12,11 +12,7 @@ class UnavailableSubscriptionRepository implements SubscriptionRepository {
   bool get isAvailable => false;
 
   @override
-  Future<SubscriptionAccess> identify(String? userId) async =>
-      const SubscriptionAccess.unavailable();
-
-  @override
-  Future<void> initialize({String? userId}) async {}
+  Future<void> initialize() async {}
 
   @override
   Future<List<PremiumOffer>> loadOffers() => Future.error(_failure);

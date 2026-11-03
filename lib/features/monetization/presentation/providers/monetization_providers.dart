@@ -1,4 +1,3 @@
-import 'package:flow_music/features/account/presentation/providers/account_providers.dart';
 import 'package:flow_music/features/monetization/application/subscription_actions.dart';
 import 'package:flow_music/features/monetization/data/revenuecat_subscription_repository.dart';
 import 'package:flow_music/features/monetization/data/unavailable_subscription_repository.dart';
@@ -25,8 +24,5 @@ final premiumOffersProvider = FutureProvider<List<PremiumOffer>>((ref) {
 });
 
 final subscriptionActionsProvider = Provider<SubscriptionActions>((ref) {
-  return SubscriptionActions(
-    ref.watch(authRepositoryProvider),
-    ref.watch(subscriptionRepositoryProvider),
-  );
+  return SubscriptionActions(ref.watch(subscriptionRepositoryProvider));
 });

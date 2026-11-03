@@ -14,8 +14,7 @@ class RevenueCatSubscriptionRepository implements SubscriptionRepository {
   SubscriptionAccess _current = const SubscriptionAccess.loading();
   final _packages = <PremiumOfferKind, Package>{};
   bool _initialized = false;
-  String? _identifiedUserId;
-  bool _changingIdentity = false;
+  Future<void>? _initialization;
   Timer? _expiryTimer;
 
   late final CustomerInfoUpdateListener _customerInfoListener =
@@ -33,60 +32,37 @@ class RevenueCatSubscriptionRepository implements SubscriptionRepository {
   }
 
   @override
-  Future<void> initialize({String? userId}) async {
+  Future<void> initialize() => _initialization ??= _initialize().catchError((
+    Object error,
+    StackTrace stackTrace,
+  ) {
+    _initialization = null;
+    Error.throwWithStackTrace(error, stackTrace);
+  });
+
+  Future<void> _initialize() async {
     if (_initialized) {
-      await identify(userId);
+      await refresh();
       return;
     }
     if (!isAvailable) {
       _emit(const SubscriptionAccess.unavailable());
       return;
     }
-
     if (kDebugMode) await Purchases.setLogLevel(LogLevel.debug);
-    final configuration = PurchasesConfiguration(
-      AppEnvironment.revenueCatApiKey,
-    )..appUserID = userId;
-    await Purchases.configure(configuration);
+    // Sin appUserID ni logout: el SDK conserva la identidad local existente y
+    // genera una anónima en instalaciones nuevas. Restaurar consulta la tienda.
+    await Purchases.configure(
+      PurchasesConfiguration(AppEnvironment.revenueCatApiKey),
+    );
     Purchases.addCustomerInfoUpdateListener(_customerInfoListener);
     _initialized = true;
-    _identifiedUserId = userId;
     await refresh();
   }
 
   @override
-  Future<SubscriptionAccess> identify(String? userId) async {
-    if (!_initialized) {
-      await initialize(userId: userId);
-      return _current;
-    }
-    if (_identifiedUserId == userId) return refresh();
-
-    _changingIdentity = true;
-    _emit(const SubscriptionAccess.loading());
-    try {
-      final CustomerInfo info;
-      if (userId == null) {
-        final isAnonymous = await Purchases.isAnonymous;
-        info = isAnonymous
-            ? await Purchases.getCustomerInfo()
-            : await Purchases.logOut();
-      } else {
-        info = (await Purchases.logIn(userId)).customerInfo;
-      }
-      _identifiedUserId = userId;
-      return _map(info);
-    } on PlatformException catch (error) {
-      _identifiedUserId = null;
-      throw _failure(error);
-    } finally {
-      _changingIdentity = false;
-    }
-  }
-
-  @override
   Future<List<PremiumOffer>> loadOffers() async {
-    await initialize(userId: _identifiedUserId);
+    await initialize();
     if (!_initialized) {
       throw const SubscriptionFailure(
         'Los aportes todavia no estan configurados.',
@@ -132,7 +108,6 @@ class RevenueCatSubscriptionRepository implements SubscriptionRepository {
 
   @override
   Future<SubscriptionAccess> purchase(PremiumOfferKind kind) async {
-    final purchasingUserId = _identifiedUserId;
     try {
       if (!_packages.containsKey(kind)) await loadOffers();
       final selected = _packages[kind];
@@ -142,11 +117,6 @@ class RevenueCatSubscriptionRepository implements SubscriptionRepository {
         );
       }
       final result = await Purchases.purchase(PurchaseParams.package(selected));
-      if (_identifiedUserId != purchasingUserId || _changingIdentity) {
-        throw const SubscriptionFailure(
-          'La cuenta cambió. Inicia sesión con la cuenta de la compra para restaurarla.',
-        );
-      }
       return _map(result.customerInfo);
     } on PlatformException catch (error) {
       throw _failure(error);
@@ -168,14 +138,9 @@ class RevenueCatSubscriptionRepository implements SubscriptionRepository {
 
   @override
   Future<SubscriptionAccess> restore() async {
-    final restoringUserId = _identifiedUserId;
+    await initialize();
     try {
       final info = await Purchases.restorePurchases();
-      if (_identifiedUserId != restoringUserId || _changingIdentity) {
-        throw const SubscriptionFailure(
-          'La cuenta cambió. Inicia sesión de nuevo para restaurar la compra.',
-        );
-      }
       return _map(info);
     } on PlatformException catch (error) {
       throw _failure(error);
@@ -185,19 +150,16 @@ class RevenueCatSubscriptionRepository implements SubscriptionRepository {
   @override
   Future<SubscriptionAccess> refresh() async {
     if (!_initialized) return _current;
-    final userId = _identifiedUserId;
     try {
       final info = await Purchases.getCustomerInfo();
-      return userId == _identifiedUserId && !_changingIdentity
-          ? _map(info)
-          : _current;
+      return _map(info);
     } on PlatformException catch (error) {
       throw _failure(error);
     }
   }
 
   void _handleCustomerInfo(CustomerInfo info) {
-    if (!_changingIdentity) _map(info);
+    _map(info);
   }
 
   SubscriptionAccess _map(CustomerInfo info) {
@@ -222,7 +184,6 @@ class RevenueCatSubscriptionRepository implements SubscriptionRepository {
       isResolved: true,
       serviceAvailable: true,
       isActive: entitlement?.isActive ?? false,
-      userId: _identifiedUserId,
       hasMonthlySubscription: monthlyExpiry != null,
       monthlyExpiresAt: monthlyExpiry,
       managementUrl: info.managementURL,

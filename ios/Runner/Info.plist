@@ -27,14 +27,6 @@
 				<string>streambeat</string>
 			</array>
 		</dict>
-		<dict>
-			<key>CFBundleTypeRole</key>
-			<string>Editor</string>
-			<key>CFBundleURLSchemes</key>
-			<array>
-				<string>com.googleusercontent.apps.658472044755-bbafm8tme29cej4dviltah75bvv0f5i6</string>
-			</array>
-		</dict>
 	</array>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>

@@ -17,8 +17,7 @@ void main() {
     test('restored guest $productId activates Premium and hides ads', () async {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (call) async {
-            expect(call.method, 'restorePurchases');
-            return _customerInfo(productId);
+            return _handlePurchaseCall(call, _customerInfo(productId));
           });
       final repository = RevenueCatSubscriptionRepository();
       addTearDown(() {
@@ -37,11 +36,48 @@ void main() {
     });
   }
 
+  test(
+    'initialization does not replace the cached store identity or log out',
+    () async {
+      final calls = <MethodCall>[];
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+            calls.add(call);
+            return _handlePurchaseCall(
+              call,
+              _customerInfo('streambeat_support_small'),
+            );
+          });
+      final repository = RevenueCatSubscriptionRepository();
+      addTearDown(() {
+        repository.dispose();
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, null);
+      });
+      await Future.wait([repository.initialize(), repository.initialize()]);
+      final setups = calls.where((call) => call.method == 'setupPurchases');
+      expect(setups, hasLength(1));
+      expect((setups.single.arguments as Map)['appUserId'], isNull);
+      expect(
+        calls.any((call) => call.method == 'logIn' || call.method == 'logOut'),
+        isFalse,
+      );
+      final access = await repository.restore();
+      expect(access.isActive, isTrue);
+    },
+    skip: const String.fromEnvironment('REVENUECAT_ANDROID_API_KEY').isEmpty
+        ? 'Run with the public test SDK key to exercise Purchases.configure.'
+        : false,
+  );
+
   test('expired guest subscription does not suppress ads', () async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
           channel,
-          (call) async => _customerInfo('remove_ads_monthly', expired: true),
+          (call) async => _handlePurchaseCall(
+            call,
+            _customerInfo('remove_ads_monthly', expired: true),
+          ),
         );
     final repository = RevenueCatSubscriptionRepository();
     addTearDown(() {
@@ -119,4 +155,21 @@ Map<String, Object?> _customerInfo(String productId, {bool expired = false}) {
     'allExpirationDates': {productId: expiry},
     'requestDate': DateTime.now().toIso8601String(),
   };
+}
+
+Object? _handlePurchaseCall(MethodCall call, Map<String, Object?> info) {
+  switch (call.method) {
+    case 'setLogLevel':
+      return null;
+    case 'setupPurchases':
+      expect((call.arguments as Map)['appUserId'], isNull);
+      return null;
+    case 'getCustomerInfo':
+    case 'restorePurchases':
+      return info;
+    default:
+      fail(
+        'Unexpected purchase operation without an app account: ${call.method}',
+      );
+  }
 }

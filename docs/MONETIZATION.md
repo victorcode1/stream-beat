@@ -20,22 +20,20 @@ StreamBeat usa un modelo freemium deliberadamente discreto:
 
 ## Límites de arquitectura
 
-El dominio depende de `AuthRepository`, `CustomerProfileRepository`,
-`SubscriptionRepository` y `AdConsentRepository`. Supabase, RevenueCat y AdMob
-son adaptadores reemplazables. Aportar y restaurar el beneficio sin anuncios no requiere cuenta.
-RevenueCat mantiene una identidad anónima persistente para esos usuarios y los
-derechos de la tienda eliminan anuncios también sin sesión. Al iniciar sesión
-opcionalmente, el UID de Supabase se usa como `appUserID` de RevenueCat. La
-cuenta sirve para el perfil y las compras; no guarda la biblioteca.
+La aplicación no tiene inicio de sesión ni conexión con Supabase. Los aportes y
+la restauración funcionan mediante RevenueCat y la cuenta de Google Play o
+App Store, sin una cuenta de StreamBeat. El SDK conserva su identidad local y
+la información de compras; una instalación nueva utiliza una identidad anónima.
+La app no llama a login/logout ni cambia la identidad del comprador.
 
-Para reinstalación y restauración sin cuenta, verificar en RevenueCat que el
-comportamiento de restauración sea **Transfer to new App User ID**, como indica
+Para reinstalación y restauración sin cuenta, verificar en RevenueCat que los
+productos sean **no consumibles** y que el comportamiento de restauración sea
+**Transfer to new App User ID**, como indica
 [su documentación](https://www.revenuecat.com/docs/projects/restore-behavior).
-No cambiar esta política sin revisar las consecuencias para cuentas existentes.
-
-RevenueCat es la fuente operativa para desbloquear la app. El webhook
-`revenuecat-webhook` mantiene un modelo de lectura en PostgreSQL. El cliente
-solo puede leer su propia fila mediante RLS y nunca puede concederse Premium.
+El usuario puede pulsar «Restaurar compra» con la misma cuenta de la tienda.
+RevenueCat verifica los derechos y mantiene su caché local; no se concede el
+beneficio mediante un booleano local editable. La compra no se transfiere entre
+Google Play y App Store automáticamente.
 
 El nuevo cliente utiliza explícitamente el offering `support`. El offering
 `default` no se altera para evitar afectar clientes publicados antes de esta
@@ -51,53 +49,26 @@ Copiar `config/monetization.example.json` a
     flutter build appbundle --release \
       --dart-define-from-file=config/monetization.local.json
 
-Los secretos `REVENUECAT_WEBHOOK_AUTH` y `SUPABASE_SERVICE_ROLE_KEY` viven solo
-en Supabase Edge Functions. Nunca deben incluirse en Flutter.
+La configuración del cliente solo necesita los identificadores públicos de
+RevenueCat y AdMob. No incluye claves Supabase, clientes OAuth ni callbacks de
+autenticación. Las herramientas de validación ya no exigen esos valores.
 
-`GOOGLE_WEB_CLIENT_ID` y `GOOGLE_IOS_CLIENT_ID` son identificadores OAuth
-públicos y pueden viajar en el binario. El secreto del cliente OAuth web se
-guarda únicamente en el proveedor Google de Supabase Auth.
+## Backend retirado del cliente
 
-## Supabase
-
-La migración versionada crea `profiles`, `subscription_entitlements` y el
-registro idempotente de webhooks. Todas las tablas tienen RLS y privilegios
-explícitos. Las funciones son:
-
-- `revenuecat-webhook`: JWT desactivado únicamente porque valida el valor
-  exacto del encabezado `Authorization` configurado en RevenueCat.
-- `delete-account`: requiere JWT de Supabase, vuelve a validar el usuario y
-  elimina la cuenta con el cliente administrativo.
-
-El límite de intentos de login de la app es solo una protección local; no
-sustituye los límites de Supabase Auth ni un CAPTCHA. CAPTCHA y el panel de
-rentabilidad siguen pendientes de integración/acceso a fuentes reales. No
-se han habilitado planes de pago ni se han usado ingresos sandbox como reales.
-
-Las claves de servicio y el secreto de webhook siguen exclusivamente en Supabase.
-
-Agregar `com.victorflores.streambeat://auth-callback` a las URL de redirección
-de Auth. Mantener confirmación de correo activada en producción.
-
-Para Google Sign-In, registrar en Google Auth Platform el paquete Android
-`com.victorflores.streambeat` con los SHA-1 de Play App Signing y de debug,
-crear un cliente OAuth web para obtener el ID token y habilitar Google en
-Supabase Auth. En iOS se agrega además el cliente del bundle y su esquema URL
-invertido.
-
-En el proyecto remoto, configurar también los secretos
-`REVENUECAT_WEBHOOK_AUTH` y `REVENUECAT_ENTITLEMENT_ID=remove_ads`. El webhook
-de RevenueCat debe apuntar a
-`https://afgpugpnapajemftfbzz.supabase.co/functions/v1/revenuecat-webhook`.
+La app no inicializa Supabase, no envía analítica a sus tablas y no utiliza
+perfiles ni webhooks para otorgar el beneficio sin anuncios. Se retiraron los
+SDK de Supabase, Google Sign-In y Sign in with Apple del cliente. Los archivos
+históricos de `supabase/` se conservan como infraestructura anterior; este
+cambio no borra usuarios, datos, funciones ni proyectos remotos.
 
 ## Datos de uso locales
 
 Favoritos, playlists, preferencias e historial se guardan solo en el
 dispositivo y funcionan sin red. No hay respaldo remoto, sincronización entre
-dispositivos ni opción de compra que los habilite. Cada biblioteca local queda
-aislada por cuenta: cerrar sesión la archiva localmente bajo el UID para no
-mezclarla con otra cuenta, y vuelve a mostrarse al entrar con la misma cuenta
-en ese dispositivo. Eliminar la cuenta borra también su biblioteca local.
+dispositivos ni opción de compra que los habilite. Al actualizar se conserva la
+biblioteca visible del dispositivo, incluidos favoritos, playlists y preferencias.
+Se recuperan escrituras pendientes de la versión anterior y se conservan los
+archivos locales históricos, sin autenticación ni cambios entre cuentas.
 Configuración no muestra estado de nube, sincronización manual ni exportación
 de copias remotas; permite exportar la biblioteca local como JSON mediante el
 menú de compartir, tras advertir que las URLs de emisoras personalizadas pueden
@@ -123,8 +94,8 @@ antes ni retira esa infraestructura; hacerlo requiere un cambio de backend apart
 3. Asociar cada producto a `remove_ads` y a su package `small`, `medium` o
    `large` del offering `support` en la plataforma correspondiente.
 4. Conservar los productos históricos y sus derechos para clientes anteriores.
-5. Configurar el webhook de RevenueCat con el encabezado secreto exacto y
-   probar compra y restauración con usuarios sandbox.
+5. Verificar la restauración entre identificadores anónimos y probar compra y
+   restauración con usuarios sandbox, incluida una reinstalación.
 
 El 2 de octubre de 2026 se activaron los tres aportes Android en las 174
 regiones de facturación admitidas por Google Play, con precios locales e
@@ -138,9 +109,8 @@ las reglas generales para quitar anuncios, que es una función digital.
 
 ## AdMob y privacidad
 
-Los builds debug usan IDs de prueba oficiales. Android ya tiene configurado el
-application ID de StreamBeat; iOS seguirá sin anuncios de producción hasta que
-se cree su app y se reemplace `GADApplicationIdentifier`. UMP se consulta en
+Los builds debug usan IDs de prueba oficiales. Android e iOS tienen configurados
+los application IDs de StreamBeat en la cuenta activa de AdMob. UMP se consulta en
 cada arranque, no se solicita un anuncio hasta que `canRequestAds` lo permite,
 y Ajustes muestra la entrada de privacidad cuando sea obligatoria.
 
@@ -149,3 +119,105 @@ del desarrollador. El archivo versionado está en `docs/app-ads.txt`, pero con e
 sitio actual de GitHub Pages debe quedar accesible exactamente en
 `https://victorcode1.github.io/app-ads.txt`; publicarlo solo bajo
 `/flow-music/app-ads.txt` no completa la verificación.
+
+El 3 de noviembre de 2026 se confirmó la cuenta original aprobada de StreamBeat,
+asociada a `victorflores20511@gmail.com`, publicador `pub-7471220027528882`:
+
+| Plataforma | App de AdMob                             | Banner principal                         |
+| ---------- | ---------------------------------------- | ---------------------------------------- |
+| Android    | `ca-app-pub-7471220027528882~6944234131` | `ca-app-pub-7471220027528882/1890579975` |
+| iOS        | `ca-app-pub-7471220027528882~2622781522` | `ca-app-pub-7471220027528882/8996618184` |
+
+Android está vinculado a `com.victorflores.streambeat` en Google Play y AdMob
+muestra «Lista — Anuncios habilitados». iOS sigue pendiente de vincular su ficha
+pública de App Store y muestra publicación limitada.
+
+La cuenta `pub-6310779950033208`, usada temporalmente el 2 de noviembre, fue
+rechazada por duplicidad. No se deben distribuir compilaciones con sus IDs.
+Los identificadores nativos y `config/monetization.local.json` vuelven a usar
+la cuenta original aprobada. El cierre de la cuenta duplicada no se ha realizado.
+
+El archivo público `app-ads.txt` incluye el publicador original y conserva la
+entrada adicional de la cuenta duplicada; esa entrada no obliga a usar sus IDs.
+Editar la configuración local no modifica los binarios ya instalados.
+
+En la cuenta original ya existe un mensaje europeo publicado para StreamBeat
+(desde el 14 de agosto de 2026); la pantalla de privacidad también muestra un
+mensaje activo para las reglamentaciones estatales de EE. UU. No se modificaron
+esos mensajes durante esta corrección.
+
+En la consulta del 3 de noviembre de 2026, el perfil de pagos de la cuenta
+original mostraba USD 0.17 y un umbral mensual de USD 100.00. La página principal
+indicaba que la verificación de identidad y los detalles bancarios todavía no
+estaban disponibles hasta alcanzar el ingreso mínimo correspondiente. Estos
+saldos y estados son una consulta puntual y deben comprobarse en AdMob antes
+de tomar decisiones de cobro.
+
+## Comprobaciones de la versión 1.1.17 (26)
+
+Se retiró el acceso de StreamBeat y la dependencia de Supabase del cliente.
+La migración conserva la biblioteca visible al actualizar y no borra datos
+remotos históricos. Android conserva explícitamente el constructor de
+`WorkDatabase_Impl` para evitar el cierre de WorkManager con R8 en producción.
+
+Los aportes de importe libre externos son independientes y no deben activar el
+entitlement `remove_ads`. El 3 de noviembre de 2026 se configuró
+[Ko-fi de StreamBeat](https://ko-fi.com/streambeat), con PayPal conectado y Panamá
+confirmado como país. El formulario usa dólares estadounidenses, importe libre
+desde USD 1, sin importes sugeridos y con aporte único por defecto. La descripción
+y el agradecimiento aclaran que el apoyo no quita anuncios ni desbloquea funciones.
+
+Se comprobó la página pública sin iniciar sesión y se introdujo USD 2.50: el
+botón reflejó el importe y la opción mensual permaneció desmarcada. No se realizó
+un pago; la recepción efectiva de fondos todavía requiere una transacción real.
+La compilación 26 conserva los tres aportes de las tiendas y la restauración,
+sin enlace externo. La integración del enlace corresponde a la compilación 27.
+
+En la prueba manual del 3 de noviembre de 2026 con un HONOR RKY-LX3 (Android 14),
+la compilación release mostró los tres importes y «Restaurar compra», sin acceso
+ni registro. La restauración devolvió un beneficio activo, cambió la tarjeta a
+«StreamBeat sin anuncios» y retiró el banner sin pedir una cuenta de StreamBeat.
+La prueba no generó una compra nueva. La configuración nativa de iOS pasó la
+validación local; esta retirada de autenticación no se compiló ni se probó en iOS.
+
+## Aporte externo en la versión 1.1.17 (27)
+
+En Ajustes se añadió «Apoyar StreamBeat» con el botón «Aportar otro importe».
+Abre `https://ko-fi.com/streambeat` en el navegador externo y aclara que el apoyo
+es voluntario, desde USD 1, sin eliminar anuncios ni desbloquear funciones.
+No inicia compras, no modifica RevenueCat y no otorga `remove_ads`. Los errores
+de apertura se comunican mediante el aviso de enlace no disponible.
+
+El botón se muestra en Android, web y escritorio no Apple, incluso para usuarios
+que ya tienen el beneficio sin anuncios. Las compilaciones nativas de iOS y
+macOS lo ocultan: no se ha implementado la verificación de storefront ni los
+permisos regionales de Apple. No se usa el idioma o la ubicación del dispositivo
+para inferir la tienda del comprador.
+
+El 3 de noviembre de 2026 se desactivaron las mensualidades de Ko-fi y se retiró
+la cuenta del modo Standard. Los aportes únicos tienen 0 % de comisión de Ko-fi;
+las comisiones de procesamiento de PayPal siguen aplicándose. Se confirmó que
+el mínimo de USD 1 y el formulario de importe libre permanecen guardados.
+
+La decisión para Android se basa en la excepción de aportes directos sin acceso
+a contenido o servicios digitales de la
+[política de Google Play](https://support.google.com/googleplay/android-developer/answer/10281818?hl=en).
+Se eliminó la comisión de plataforma de acuerdo con la
+[documentación de Ko-fi](https://help.ko-fi.com/hc/en-us/articles/360002506494-Does-Ko-fi-take-a-fee).
+Esta es una interpretación para implementar el flujo, no una aprobación de la
+tienda. Las condiciones de Apple se documentan en las
+[reglas 3.1.1 y 3.2.1](https://developer.apple.com/app-store/review/guidelines/).
+
+Validación local: 196 pruebas correctas, una omitida por el proyecto y análisis
+de `lib` y `test` sin avisos. Las pruebas de interfaz comprueban la apertura de
+Ko-fi en modo externo sin compra de la tienda, los errores de apertura y la
+ausencia del botón en iOS/macOS. No se ha efectuado una transacción real de Ko-fi
+ni se ha publicado esta compilación en las tiendas.
+
+Prueba en dispositivo del 3 de noviembre de 2026: la compilación release 1.1.17
+(27) se instaló en el HONOR RKY-LX3. Con el beneficio sin anuncios activo,
+Ajustes mostró «Apoyar StreamBeat» y «Aportar otro importe»; al pulsarlo se
+abrió `ko-fi.com/streambeat` en el navegador externo con la página de StreamBeat
+cargada y sin iniciar ninguna compra de la tienda. También se generó
+`build/app/outputs/bundle/release/app-release.aab` (versionCode 27) para Google
+Play; no se ha subido a Play Console.

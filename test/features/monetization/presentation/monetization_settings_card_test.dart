@@ -1,17 +1,20 @@
-import 'package:flow_music/features/account/data/unavailable_auth_repository.dart';
-import 'package:flow_music/features/account/domain/entities/app_user.dart';
-import 'package:flow_music/features/account/presentation/providers/account_providers.dart';
 import 'package:flow_music/features/monetization/domain/entities/subscription_access.dart';
 import 'package:flow_music/features/monetization/domain/repositories/subscription_repository.dart';
 import 'package:flow_music/features/monetization/presentation/providers/ad_providers.dart';
 import 'package:flow_music/features/monetization/presentation/providers/monetization_providers.dart';
 import 'package:flow_music/features/monetization/presentation/widgets/monetization_settings_card.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 void main() {
-  const user = AppUser(id: 'test-user', email: 'user@example.com');
+  const launcher = MethodChannel('plugins.flutter.io/url_launcher');
+
+  tearDown(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(launcher, null);
+  });
 
   Future<_TrackingSubscriptionRepository> pumpCard(
     WidgetTester tester, {
@@ -33,17 +36,11 @@ void main() {
       ),
     ],
     SubscriptionAccess access = const SubscriptionAccess.free(),
-    AppUser? signedInUser = user,
-    bool authAvailable = true,
   }) async {
     final subscriptions = _TrackingSubscriptionRepository();
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          authRepositoryProvider.overrideWithValue(
-            _AvailableAuth(signedInUser, authAvailable),
-          ),
-          authUserProvider.overrideWith((ref) => Stream.value(signedInUser)),
           subscriptionRepositoryProvider.overrideWithValue(subscriptions),
           subscriptionAccessProvider.overrideWith(
             (ref) => Stream.value(access),
@@ -61,6 +58,69 @@ void main() {
     await tester.pumpAndSettle();
     return subscriptions;
   }
+
+  testWidgets('external support opens Ko-fi without purchasing ad removal', (
+    tester,
+  ) async {
+    MethodCall? launched;
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(launcher, (call) async {
+          launched = call;
+          return true;
+        });
+    final subscriptions = await pumpCard(tester);
+    final button = find.byKey(const Key('external-support'));
+    expect(button, findsOneWidget);
+    expect(find.text('external_support_disclosure'), findsOneWidget);
+    await tester.ensureVisible(button);
+    await tester.tap(button);
+    await tester.pumpAndSettle();
+
+    expect(launched?.method, 'launch');
+    expect(launched?.arguments['url'], 'https://ko-fi.com/streambeat');
+    expect(launched?.arguments['useWebView'], false);
+    expect(launched?.arguments['useSafariVC'], false);
+    expect(subscriptions.purchasedKinds, isEmpty);
+    expect(subscriptions.restoreCalls, 0);
+  }, variant: TargetPlatformVariant({TargetPlatform.android}));
+
+  for (final platform in [TargetPlatform.iOS, TargetPlatform.macOS]) {
+    testWidgets('external support is hidden on $platform', (tester) async {
+      await pumpCard(tester);
+      expect(find.byKey(const Key('external-support')), findsNothing);
+      expect(find.text('restore_purchase'), findsOneWidget);
+    }, variant: TargetPlatformVariant({platform}));
+  }
+
+  for (final throws in [false, true]) {
+    testWidgets('external support reports launch failure (throws: $throws)', (
+      tester,
+    ) async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(launcher, (call) async {
+            if (throws) throw PlatformException(code: 'launch_failed');
+            return false;
+          });
+      await pumpCard(tester);
+      final button = find.byKey(const Key('external-support'));
+      await tester.ensureVisible(button);
+      await tester.tap(button);
+      await tester.pumpAndSettle();
+      expect(find.text('subscription_link_failed'), findsOneWidget);
+    }, variant: TargetPlatformVariant({TargetPlatform.android}));
+  }
+
+  testWidgets('contributions and restore have no account controls', (
+    tester,
+  ) async {
+    await pumpCard(tester);
+    expect(find.text('auth_sign_in_button'), findsNothing);
+    expect(find.text('auth_sign_out'), findsNothing);
+    expect(find.text('auth_delete_account'), findsNothing);
+    expect(find.text('account_subscription_reason'), findsNothing);
+    expect(find.text('restore_purchase'), findsOneWidget);
+    expect(find.byKey(const ValueKey('contribution-small')), findsOneWidget);
+  });
 
   testWidgets(
     'offers three contribution amounts without subscriptions or lifetime sale',
@@ -80,46 +140,21 @@ void main() {
     testWidgets('guest $kind purchase opens store without account sheet', (
       tester,
     ) async {
-      final subscriptions = await pumpCard(tester, signedInUser: null);
+      final subscriptions = await pumpCard(tester);
       final button = find.byKey(ValueKey('contribution-${kind.name}'));
       await tester.tap(button);
       await tester.pumpAndSettle();
       expect(find.byType(BottomSheet), findsNothing);
       expect(subscriptions.purchasedKinds, [kind]);
-      expect(subscriptions.identifiedUserId, isNull);
     });
   }
 
   testWidgets('guest restores without registration', (tester) async {
-    final subscriptions = await pumpCard(tester, signedInUser: null);
+    final subscriptions = await pumpCard(tester);
     await tester.tap(find.text('restore_purchase'));
     await tester.pumpAndSettle();
     expect(subscriptions.restoreCalls, 1);
     expect(find.byType(BottomSheet), findsNothing);
-  });
-
-  testWidgets('store remains available when account service is unavailable', (
-    tester,
-  ) async {
-    final subscriptions = await pumpCard(
-      tester,
-      signedInUser: null,
-      authAvailable: false,
-    );
-    await tester.tap(find.byKey(const ValueKey('contribution-large')));
-    await tester.pumpAndSettle();
-    expect(subscriptions.purchasedKinds, [PremiumOfferKind.large]);
-    expect(find.text('monetization_unavailable'), findsNothing);
-  });
-
-  testWidgets('guest may separately open the optional account sheet', (
-    tester,
-  ) async {
-    final subscriptions = await pumpCard(tester, signedInUser: null);
-    await tester.tap(find.text('auth_sign_in_button'));
-    await tester.pumpAndSettle();
-    expect(find.byType(BottomSheet), findsOneWidget);
-    expect(subscriptions.purchasedKinds, isEmpty);
   });
 
   testWidgets('does not offer a purchase without store prices', (tester) async {
@@ -128,39 +163,6 @@ void main() {
     expect(find.byKey(const ValueKey('contribution-large')), findsNothing);
     expect(find.text('retry'), findsOneWidget);
     expect(find.text('restore_purchase'), findsOneWidget);
-  });
-
-  testWidgets('sign-out keeps account deletion unchecked by default', (
-    tester,
-  ) async {
-    await pumpCard(tester);
-    await tester.ensureVisible(find.text('auth_sign_out'));
-    await tester.tap(find.text('auth_sign_out'));
-    await tester.pumpAndSettle();
-    expect(
-      tester.widget<CheckboxListTile>(find.byType(CheckboxListTile)).value,
-      isFalse,
-    );
-    await tester.tap(find.widgetWithText(TextButton, 'cancel'));
-    await tester.pumpAndSettle();
-    expect(find.byType(AlertDialog), findsNothing);
-  });
-
-  testWidgets('account deletion during sign-out needs a second confirmation', (
-    tester,
-  ) async {
-    await pumpCard(tester);
-    await tester.ensureVisible(find.text('auth_sign_out'));
-    await tester.tap(find.text('auth_sign_out'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byType(CheckboxListTile));
-    await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilledButton, 'auth_sign_out'));
-    await tester.pumpAndSettle();
-    expect(find.text('auth_sign_out_delete_warning_title'), findsOneWidget);
-    await tester.tap(find.widgetWithText(TextButton, 'cancel'));
-    await tester.pumpAndSettle();
-    expect(find.byType(AlertDialog), findsNothing);
   });
 
   testWidgets('routes large contribution to its store package', (tester) async {
@@ -232,21 +234,8 @@ void main() {
   });
 }
 
-class _AvailableAuth extends UnavailableAuthRepository {
-  const _AvailableAuth(this.user, this.available);
-  final AppUser? user;
-  final bool available;
-
-  @override
-  bool get isAvailable => available;
-
-  @override
-  AppUser? get currentUser => user;
-}
-
 class _TrackingSubscriptionRepository implements SubscriptionRepository {
   final purchasedKinds = <PremiumOfferKind>[];
-  String? identifiedUserId;
   int restoreCalls = 0;
 
   @override
@@ -256,13 +245,7 @@ class _TrackingSubscriptionRepository implements SubscriptionRepository {
   void dispose() {}
 
   @override
-  Future<SubscriptionAccess> identify(String? userId) async {
-    identifiedUserId = userId;
-    return const SubscriptionAccess.free();
-  }
-
-  @override
-  Future<void> initialize({String? userId}) async {}
+  Future<void> initialize() async {}
 
   @override
   Future<List<PremiumOffer>> loadOffers() async => const [];

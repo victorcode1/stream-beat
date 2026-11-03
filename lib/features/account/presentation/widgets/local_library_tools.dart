@@ -1,6 +1,5 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flow_music/features/account/application/library_export.dart';
-import 'package:flow_music/features/account/presentation/providers/account_providers.dart';
 import 'package:flow_music/features/account/presentation/providers/local_user_data_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -25,7 +24,6 @@ class _LocalLibraryToolsState extends ConsumerState<LocalLibraryTools> {
   );
 
   Future<void> _export() async {
-    final userId = ref.read(authRepositoryProvider).currentUser?.id;
     final approved = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -43,13 +41,13 @@ class _LocalLibraryToolsState extends ConsumerState<LocalLibraryTools> {
         ],
       ),
     );
-    if (approved != true || !mounted || !_sameUser(userId)) return;
+    if (approved != true || !mounted) return;
     setState(() => _busy = true);
     try {
       final snapshot = await ref
           .read(localUserDataCoordinatorProvider)
           .readCurrentUser();
-      if (!mounted || !_sameUser(userId)) return;
+      if (!mounted) return;
       final renderBox = context.findRenderObject();
       final origin = renderBox is RenderBox && renderBox.hasSize
           ? renderBox.localToGlobal(Offset.zero) & renderBox.size
@@ -77,9 +75,6 @@ class _LocalLibraryToolsState extends ConsumerState<LocalLibraryTools> {
       if (mounted) setState(() => _busy = false);
     }
   }
-
-  bool _sameUser(String? userId) =>
-      ref.read(authRepositoryProvider).currentUser?.id == userId;
 
   void _message(String message) => ScaffoldMessenger.of(
     context,

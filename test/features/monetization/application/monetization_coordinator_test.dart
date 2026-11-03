@@ -1,122 +1,28 @@
-import 'dart:async';
-
-import 'package:flow_music/features/account/domain/entities/app_user.dart';
-import 'package:flow_music/features/account/domain/repositories/auth_repository.dart';
-import 'package:flow_music/features/account/domain/repositories/customer_profile_repository.dart';
 import 'package:flow_music/features/monetization/application/monetization_coordinator.dart';
 import 'package:flow_music/features/monetization/domain/entities/subscription_access.dart';
 import 'package:flow_music/features/monetization/domain/repositories/subscription_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test(
-    'initializes RevenueCat even when the first user is anonymous',
-    () async {
-      final auth = _StreamingAuthRepository();
-      final subscriptions = _TrackingSubscriptionRepository();
-      final coordinator = MonetizationCoordinator(
-        auth,
-        const NoopCustomerProfileRepository(),
-        subscriptions,
-      );
+  test('starts purchases without authentication or profiles', () async {
+    final subscriptions = _TrackingSubscriptionRepository();
+    await MonetizationCoordinator(subscriptions).initialize();
+    expect(subscriptions.initializeCalls, 1);
+  });
 
-      await coordinator.initialize();
-
-      expect(subscriptions.initializedUserIds, [null]);
-      expect(subscriptions.identifiedUserIds, [null]);
-
-      coordinator.dispose();
-      await auth.dispose();
-    },
-  );
-
-  test(
-    'uses the same Supabase id for profile and subscription state',
-    () async {
-      final auth = _StreamingAuthRepository();
-      final profiles = _TrackingProfileRepository();
-      final subscriptions = _TrackingSubscriptionRepository();
-      final coordinator = MonetizationCoordinator(
-        auth,
-        profiles,
-        subscriptions,
-      );
-      await coordinator.initialize();
-
-      const user = AppUser(id: 'supabase-user-id', email: 'user@example.com');
-      auth.emit(user);
-      await Future<void>.delayed(Duration.zero);
-
-      expect(subscriptions.initializedUserIds, [null, 'supabase-user-id']);
-      expect(subscriptions.identifiedUserIds, [null, 'supabase-user-id']);
-      expect(profiles.syncedUserIds, ['supabase-user-id']);
-
-      coordinator.dispose();
-      await auth.dispose();
-    },
-  );
-}
-
-class _StreamingAuthRepository implements AuthRepository {
-  final _changes = StreamController<AppUser?>.broadcast();
-  AppUser? _user;
-
-  void emit(AppUser? user) {
-    _user = user;
-    _changes.add(user);
-  }
-
-  Future<void> dispose() => _changes.close();
-
-  @override
-  Stream<AppUser?> get authStateChanges => _changes.stream;
-
-  @override
-  AppUser? get currentUser => _user;
-
-  @override
-  bool get isAvailable => true;
-
-  @override
-  Future<void> deleteAccount() async {}
-
-  @override
-  Future<void> sendPasswordReset(String email) async {}
-
-  @override
-  Future<AppUser> signIn({required String email, required String password}) =>
-      throw UnimplementedError();
-
-  @override
-  Future<AppUser> signInWithGoogle() => throw UnimplementedError();
-
-  @override
-  Future<AppUser> signInWithApple() => throw UnimplementedError();
-
-  @override
-  Future<void> signOut() async {}
-
-  @override
-  Future<SignUpResult> signUp({
-    required String email,
-    required String password,
-    String? displayName,
-  }) => throw UnimplementedError();
-
-  @override
-  Future<void> updatePassword(String password) async {}
-}
-
-class _TrackingProfileRepository implements CustomerProfileRepository {
-  final syncedUserIds = <String>[];
-
-  @override
-  Future<void> sync(AppUser user) async => syncedUserIds.add(user.id);
+  test('store failure does not prevent startup and can be retried', () async {
+    final subscriptions = _TrackingSubscriptionRepository()..fail = true;
+    final coordinator = MonetizationCoordinator(subscriptions);
+    await coordinator.initialize();
+    subscriptions.fail = false;
+    await coordinator.initialize();
+    expect(subscriptions.initializeCalls, 2);
+  });
 }
 
 class _TrackingSubscriptionRepository implements SubscriptionRepository {
-  final initializedUserIds = <String?>[];
-  final identifiedUserIds = <String?>[];
+  int initializeCalls = 0;
+  bool fail = false;
 
   @override
   bool get isAvailable => true;
@@ -125,14 +31,9 @@ class _TrackingSubscriptionRepository implements SubscriptionRepository {
   void dispose() {}
 
   @override
-  Future<SubscriptionAccess> identify(String? userId) async {
-    identifiedUserIds.add(userId);
-    return const SubscriptionAccess.free();
-  }
-
-  @override
-  Future<void> initialize({String? userId}) async {
-    initializedUserIds.add(userId);
+  Future<void> initialize() async {
+    initializeCalls++;
+    if (fail) throw StateError('store unavailable');
   }
 
   @override

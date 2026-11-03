@@ -3,6 +3,8 @@ import 'package:flow_music/features/monetization/domain/entities/subscription_ac
 /// Never infer the billing store from the device: an account can have a
 /// subscription purchased on a different platform.
 abstract final class SubscriptionLinks {
+  static final support = Uri.parse('https://ko-fi.com/streambeat');
+
   static final privacy = Uri.parse(
     'https://victorcode1.github.io/flow-music/privacy/',
   );
