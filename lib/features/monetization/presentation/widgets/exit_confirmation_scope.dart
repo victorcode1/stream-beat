@@ -110,6 +110,8 @@ class ExitConfirmationDialog extends StatelessWidget {
     final adSize = AdSize.mediumRectangle;
     return Dialog(
       insetPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 24),
+      // Phone-sized on tablets too: the ad and buttons stay grouped.
+      constraints: const BoxConstraints(maxWidth: 400),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
         child: LayoutBuilder(
@@ -149,15 +151,17 @@ class ExitConfirmationDialog extends StatelessWidget {
                   const SizedBox(height: 32),
                 ] else
                   const SizedBox(height: 20),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
+                OverflowBar(
+                  alignment: MainAxisAlignment.end,
+                  spacing: 8,
+                  overflowSpacing: 8,
+                  overflowAlignment: OverflowBarAlignment.end,
                   children: [
                     TextButton(
                       key: const Key('exit-cancel'),
                       onPressed: () => Navigator.pop(context, false),
                       child: Text(LocaleKeys.exit_dialog_cancel.tr()),
                     ),
-                    const SizedBox(width: 8),
                     FilledButton(
                       key: const Key('exit-confirm'),
                       onPressed: () => Navigator.pop(context, true),

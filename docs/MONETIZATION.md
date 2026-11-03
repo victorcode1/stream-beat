@@ -242,3 +242,25 @@ desarrollador («Tu apoyo es muy importante») como máximo una vez cada 7 días
 «Ahora no» lo cierra hasta el siguiente periodo. No se muestra a quien ya
 tiene el beneficio sin anuncios ni cuando la tienda no está disponible. La lógica vive en `SubscriptionPromoCoordinator` y
 `SubscriptionPromoListener`.
+
+## Diálogo al salir en Android
+
+Al pulsar Atrás en la pantalla principal de Android, si el usuario ve anuncios,
+dio su consentimiento y **no está sonando la radio**, aparece «¿Salir de
+StreamBeat?» con un banner de 300×250 precargado, rotulado «Anuncio» y separado
+32 dp de los botones «Cancelar» y «Salir», como pide la guía de AdMob para
+pantallas de confirmación de salida. Si el anuncio no está cargado, el diálogo
+sale sin él y sin reservar espacio, para que los botones no se muevan. Con la
+radio sonando, Atrás cierra la app como siempre y el audio sigue en segundo
+plano. No se usa un intersticial al salir: AdMob lo prohíbe. La lógica vive en
+`ExitConfirmationScope` y `ExitAdController`; usa la misma unidad de banner.
+
+## Incidente de la 1.1.17 (27)
+
+La 1.1.17 (27) se aprobó y publicó el 3 de noviembre de 2026 a las 11:58 y no
+reproducía radio en release. Al añadir `proguard-android-optimize.txt`, el
+reductor de recursos eliminó los iconos `audio_service_*` y `ic_notification`,
+que se buscan por nombre. Ese día se detuvo el lanzamiento en Play Console (los
+usuarios nuevos vuelven a recibir la 1.1.16) y la 1.1.18 (28) lo corrige con
+`android/app/src/main/res/raw/keep.xml`. Se verificó en el HONOR que la radio
+suena y que el despertador programa, suena a su hora y reproduce al tocarlo.
