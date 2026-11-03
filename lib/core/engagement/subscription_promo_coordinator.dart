@@ -11,7 +11,7 @@ class SubscriptionPromoCoordinator {
   SubscriptionPromoCoordinator(this._box);
 
   static const minimumLaunches = 3;
-  static const minimumInterval = Duration(days: 30);
+  static const minimumInterval = Duration(days: 7);
   static const _launchCountKey = 'subscription_promo_launch_count';
   static const _lastShownAtKey = 'subscription_promo_last_shown_at_ms';
 

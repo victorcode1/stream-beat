@@ -221,3 +221,13 @@ abrió `ko-fi.com/streambeat` en el navegador externo con la página de StreamBe
 cargada y sin iniciar ninguna compra de la tienda. También se generó
 `build/app/outputs/bundle/release/app-release.aab` (versionCode 27) para Google
 Play; no se ha subido a Play Console.
+
+## Recordatorio de apoyo cada 7 días
+
+Al abrir la app, a partir del tercer inicio, se muestra un diálogo personal del
+desarrollador («Tu apoyo es muy importante») como máximo una vez cada 7 días.
+«Sí, quiero aportar» lleva a Ajustes, donde están los aportes de la tienda y,
+fuera de iOS/macOS, el enlace a Ko-fi. «Ahora no» lo cierra hasta el siguiente
+periodo. No se muestra a quien ya tiene el beneficio sin anuncios ni cuando la
+tienda no está disponible. La lógica vive en `SubscriptionPromoCoordinator` y
+`SubscriptionPromoListener`.

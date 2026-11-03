@@ -30,7 +30,7 @@ void main() {
     expect(coordinator.shouldShow(), isTrue);
   });
 
-  test('shows at most once every 30 days', () async {
+  test('shows at most once every 7 days', () async {
     final coordinator = SubscriptionPromoCoordinator(box);
     final firstShownAt = DateTime(2026, 1, 1);
     for (var index = 0; index < 3; index++) {
@@ -39,11 +39,11 @@ void main() {
     await coordinator.markShown(now: firstShownAt);
 
     expect(
-      coordinator.shouldShow(now: firstShownAt.add(const Duration(days: 29))),
+      coordinator.shouldShow(now: firstShownAt.add(const Duration(days: 6))),
       isFalse,
     );
     expect(
-      coordinator.shouldShow(now: firstShownAt.add(const Duration(days: 30))),
+      coordinator.shouldShow(now: firstShownAt.add(const Duration(days: 7))),
       isTrue,
     );
   });
