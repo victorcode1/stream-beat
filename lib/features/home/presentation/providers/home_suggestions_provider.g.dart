@@ -48,4 +48,4 @@ final class HomeSuggestionsProvider
   }
 }
 
-String _$homeSuggestionsHash() => r'5d3d41941297bcb2746fb948713c66f0139ecfe7';
+String _$homeSuggestionsHash() => r'ccd38aacf76b1c6ba4cba833c988f8e2f90b7e83';
