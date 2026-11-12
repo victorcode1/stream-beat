@@ -40,13 +40,13 @@ final class RouteProvider extends $NotifierProvider<Route, GoRouter> {
   }
 }
 
-String _$routeHash() => r'01a3cc89aa9179c40150e80bc7624491dea27444';
+String _$routeHash() => r'218cfe184b606cad9e5983abecf505041d6c5c90';
 
 abstract class _$Route extends $Notifier<GoRouter> {
   GoRouter build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<GoRouter, GoRouter>;
     final element =
         ref.element
@@ -56,6 +56,6 @@ abstract class _$Route extends $Notifier<GoRouter> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }

@@ -54,7 +54,7 @@ final class ThemeModeControllerProvider
 }
 
 String _$themeModeControllerHash() =>
-    r'359b80633df752806dc95df3f1a4ba43452953a7';
+    r'04dbdd9084bd9db5401bcb2a252952f4b046325f';
 
 /// Controla el `ThemeMode` activo de la app.
 ///
@@ -65,7 +65,7 @@ abstract class _$ThemeModeController extends $Notifier<ThemeMode> {
   ThemeMode build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<ThemeMode, ThemeMode>;
     final element =
         ref.element
@@ -75,6 +75,6 @@ abstract class _$ThemeModeController extends $Notifier<ThemeMode> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }

@@ -80,7 +80,7 @@ abstract class _$HomeSuggestions extends $AsyncNotifier<HomeSuggestionsResult> {
   FutureOr<HomeSuggestionsResult> build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref =
         this.ref
             as $Ref<AsyncValue<HomeSuggestionsResult>, HomeSuggestionsResult>;
@@ -95,6 +95,6 @@ abstract class _$HomeSuggestions extends $AsyncNotifier<HomeSuggestionsResult> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }

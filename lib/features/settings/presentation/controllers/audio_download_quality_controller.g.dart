@@ -47,14 +47,14 @@ final class AudioDownloadQualityControllerProvider
 }
 
 String _$audioDownloadQualityControllerHash() =>
-    r'bceaff48407be689ba1f45cc4e3033d2b0254342';
+    r'25cd4438a5d4866d695f76255be3d85a4e79ca19';
 
 abstract class _$AudioDownloadQualityController
     extends $Notifier<AudioDownloadQuality> {
   AudioDownloadQuality build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<AudioDownloadQuality, AudioDownloadQuality>;
     final element =
         ref.element
@@ -64,6 +64,6 @@ abstract class _$AudioDownloadQualityController
               Object?,
               Object?
             >;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }

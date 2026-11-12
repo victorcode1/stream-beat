@@ -47,7 +47,7 @@ abstract class _$Search extends $Notifier<Raw<TextEditingController>> {
   Raw<TextEditingController> build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref =
         this.ref
             as $Ref<Raw<TextEditingController>, Raw<TextEditingController>>;
@@ -62,6 +62,6 @@ abstract class _$Search extends $Notifier<Raw<TextEditingController>> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }

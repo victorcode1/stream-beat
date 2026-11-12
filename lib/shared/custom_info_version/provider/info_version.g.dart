@@ -47,7 +47,7 @@ abstract class _$InfoVersion extends $Notifier<InfoModel> {
   InfoModel build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<InfoModel, InfoModel>;
     final element =
         ref.element
@@ -57,6 +57,6 @@ abstract class _$InfoVersion extends $Notifier<InfoModel> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }

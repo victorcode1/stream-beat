@@ -65,7 +65,7 @@ abstract class _$CacheStatusController extends $Notifier<CacheStatus> {
   CacheStatus build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<CacheStatus, CacheStatus>;
     final element =
         ref.element
@@ -75,6 +75,6 @@ abstract class _$CacheStatusController extends $Notifier<CacheStatus> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }

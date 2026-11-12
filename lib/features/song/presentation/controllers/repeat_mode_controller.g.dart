@@ -48,7 +48,7 @@ final class RepeatModeControllerProvider
 }
 
 String _$repeatModeControllerHash() =>
-    r'bd7c9dd1be84d4e16394d24a1d920d0837860fb2';
+    r'c4411b56c393f53522feacea9caeb49f87941aa9';
 
 /// When true, the current track loops instead of advancing through the
 /// autoplay queue. Persisted in Hive so the user's choice survives restarts.
@@ -57,7 +57,7 @@ abstract class _$RepeatModeController extends $Notifier<bool> {
   bool build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<bool, bool>;
     final element =
         ref.element
@@ -67,6 +67,6 @@ abstract class _$RepeatModeController extends $Notifier<bool> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }

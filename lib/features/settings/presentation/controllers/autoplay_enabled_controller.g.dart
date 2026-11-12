@@ -48,7 +48,7 @@ final class AutoplayEnabledControllerProvider
 }
 
 String _$autoplayEnabledControllerHash() =>
-    r'28b5bbeb5849261a445774a46b15b3a2bfa4f0db';
+    r'725d3641dd1443031bab070a22cc0102e14ed4a9';
 
 /// Boolean preference: when true, after a tapped search result finishes the
 /// app auto-advances through the remaining results (prefetched in parallel).
@@ -57,7 +57,7 @@ abstract class _$AutoplayEnabledController extends $Notifier<bool> {
   bool build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<bool, bool>;
     final element =
         ref.element
@@ -67,6 +67,6 @@ abstract class _$AutoplayEnabledController extends $Notifier<bool> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }

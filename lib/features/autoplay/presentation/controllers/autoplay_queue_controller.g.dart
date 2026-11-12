@@ -78,7 +78,7 @@ final class AutoplayQueueControllerProvider
 }
 
 String _$autoplayQueueControllerHash() =>
-    r'ed511ecdda628012836bd9c26323fd06be8a20e8';
+    r'f3e90b3bbe99647810412f46ebcbd54ec02999e2';
 
 /// Holds the search-results queue and pre-resolved audio URLs / cached files.
 ///
@@ -97,7 +97,7 @@ abstract class _$AutoplayQueueController extends $Notifier<AutoplayQueueState> {
   AutoplayQueueState build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<AutoplayQueueState, AutoplayQueueState>;
     final element =
         ref.element
@@ -107,6 +107,6 @@ abstract class _$AutoplayQueueController extends $Notifier<AutoplayQueueState> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }

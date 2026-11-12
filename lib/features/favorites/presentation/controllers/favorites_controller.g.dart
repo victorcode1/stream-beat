@@ -48,7 +48,7 @@ abstract class _$FavoritesController extends $Notifier<List<FavoriteSong>> {
   List<FavoriteSong> build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<List<FavoriteSong>, List<FavoriteSong>>;
     final element =
         ref.element
@@ -58,6 +58,6 @@ abstract class _$FavoritesController extends $Notifier<List<FavoriteSong>> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }

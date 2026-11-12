@@ -86,7 +86,7 @@ abstract class _$SearchDataReq
   FutureOr<List<YouTubeSearchSuggestion>> build({required String? search});
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref =
         this.ref
             as $Ref<
@@ -104,6 +104,6 @@ abstract class _$SearchDataReq
               Object?,
               Object?
             >;
-    element.handleCreate(ref, () => build(search: _$args));
+    return element.handleCreate(ref, () => build(search: _$args));
   }
 }
