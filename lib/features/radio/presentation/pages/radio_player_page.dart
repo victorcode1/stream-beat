@@ -1,7 +1,10 @@
 import 'dart:async';
+import 'dart:math' as math;
+import 'dart:ui' show ImageFilter;
 
 import 'package:audio_service/audio_service.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:flow_music/core/audio/audio_playing_provider.dart';
 import 'package:flow_music/core/audio/background_audio_handler.dart';
 import 'package:flow_music/core/sharing/station_share_service.dart';
 import 'package:flow_music/core/utils/locale_keys.g.dart';
@@ -13,7 +16,9 @@ import 'package:flow_music/features/radio/presentation/utils/play_radio_station.
 import 'package:flow_music/features/radio/presentation/widgets/radio_playlist_actions.dart';
 import 'package:flow_music/features/radio/presentation/widgets/station_links.dart';
 import 'package:flow_music/shared/widgets/optimized_network_image.dart';
+import 'package:flow_music/shared/widgets/playing_bars_indicator.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 /// Reproductor grande de emisoras, equivalente a la pantalla de cancion.
@@ -52,56 +57,62 @@ class _RadioPlayerPageState extends ConsumerState<RadioPlayerPage> {
     final radioQueue = ref.watch(radioQueueControllerProvider);
     final flowMix = ref.watch(flowMixControllerProvider);
     final station = radioQueue.current;
-    final appBarTitle =
-        station?.name ?? flowAudioHandler.mediaItem.value?.title ?? '';
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      // La pagina pinta su propio fondo: la portada ocupa la parte de arriba
+      // (tambien detras de la barra de estado) y se funde con la superficie.
+      backgroundColor: colors.surface,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        centerTitle: true,
         backgroundColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
-        titleSpacing: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new_rounded, color: colors.onSurface),
-          onPressed: () => Navigator.of(context).maybePop(),
-        ),
-        title: Text(
-          appBarTitle,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.2,
+        systemOverlayStyle: SystemUiOverlayStyle.light,
+        foregroundColor: Colors.white,
+        iconTheme: const IconThemeData(color: Colors.white),
+        actionsIconTheme: const IconThemeData(color: Colors.white),
+        leadingWidth: 64,
+        leading: Center(
+          child: _GlassPill(
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back_ios_new_rounded),
+              onPressed: () => Navigator.of(context).maybePop(),
+            ),
           ),
         ),
         actions: [
-          if (station != null) ...[
-            Builder(
-              builder: (shareContext) => IconButton(
-                tooltip: LocaleKeys.share_station.tr(),
-                icon: Icon(Icons.share_rounded, color: colors.onSurface),
-                onPressed: () => ref
-                    .read(stationShareServiceProvider)
-                    .shareStation(
-                      originContext: shareContext,
+          if (station != null)
+            _GlassPill(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Builder(
+                    builder: (shareContext) => IconButton(
+                      tooltip: LocaleKeys.share_station.tr(),
+                      icon: const Icon(Icons.share_rounded),
+                      onPressed: () => ref
+                          .read(stationShareServiceProvider)
+                          .shareStation(
+                            originContext: shareContext,
+                            station: station,
+                          ),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: LocaleKeys.add_to_playlist.tr(),
+                    icon: const Icon(Icons.playlist_add_rounded),
+                    onPressed: () => showAddToRadioPlaylistFlow(
+                      context: context,
+                      ref: ref,
                       station: station,
                     ),
+                  ),
+                  _FavoriteStationButton(station: station),
+                  StationActionsMenu(station: station),
+                ],
               ),
             ),
-            IconButton(
-              tooltip: LocaleKeys.add_to_playlist.tr(),
-              icon: Icon(Icons.playlist_add_rounded, color: colors.onSurface),
-              onPressed: () => showAddToRadioPlaylistFlow(
-                context: context,
-                ref: ref,
-                station: station,
-              ),
-            ),
-            _FavoriteStationButton(station: station),
-            StationActionsMenu(station: station),
-          ],
-          const SizedBox(width: 8),
+          const SizedBox(width: 12),
         ],
       ),
       body: StreamBuilder<MediaItem?>(
@@ -112,92 +123,110 @@ class _RadioPlayerPageState extends ConsumerState<RadioPlayerPage> {
           final subtitle = item?.artist ?? _stationSubtitle(station);
           final artUri = item?.artUri?.toString() ?? station?.artworkUrl ?? '';
 
-          return SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 28),
-              child: Column(
+          return LayoutBuilder(
+            builder: (context, constraints) {
+              final heroHeight = math.min(
+                constraints.maxWidth * 1.1,
+                constraints.maxHeight * 0.62,
+              );
+              return Stack(
                 children: [
-                  const Spacer(),
-                  _Artwork(artUri: artUri, colors: colors),
-                  const SizedBox(height: 36),
-                  Text(
-                    title,
-                    maxLines: 2,
-                    textAlign: TextAlign.center,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.4,
-                    ),
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: heroHeight,
+                    child: _HeroArtwork(artUri: artUri, colors: colors),
                   ),
-                  if (subtitle.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      subtitle,
-                      maxLines: 1,
-                      textAlign: TextAlign.center,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: colors.onSurfaceVariant,
-                        fontWeight: FontWeight.w600,
+                  SafeArea(
+                    top: false,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 28),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const Spacer(),
+                          Text(
+                            title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.headlineMedium?.copyWith(
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -0.6,
+                            ),
+                          ),
+                          if (subtitle.isNotEmpty) ...[
+                            const SizedBox(height: 6),
+                            Text(
+                              subtitle,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                color: colors.onSurfaceVariant,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              _LiveBadge(colors: colors),
+                              if (station != null &&
+                                  flowMix.ownsQueue(radioQueue.stations) &&
+                                  flowMix.contains(station)) ...[
+                                const SizedBox(width: 8),
+                                _FlowMixFeedbackButton(
+                                  station: station,
+                                  hasNext: radioQueue.hasNext,
+                                ),
+                              ],
+                            ],
+                          ),
+                          const SizedBox(height: 28),
+                          _Controls(
+                            hasNext: radioQueue.hasNext,
+                            hasPrevious: radioQueue.hasPrevious,
+                            onNext: radioQueue.hasNext
+                                ? () => playNextRadioStation(
+                                    context: context,
+                                    ref: ref,
+                                  )
+                                : null,
+                            onPrevious: radioQueue.hasPrevious
+                                ? () => playPreviousRadioStation(
+                                    context: context,
+                                    ref: ref,
+                                  )
+                                : null,
+                          ),
+                          StreamBuilder<PlaybackState>(
+                            stream: flowAudioHandler.playbackState,
+                            initialData: flowAudioHandler.playbackState.value,
+                            builder: (context, snapshot) {
+                              if (snapshot.data?.processingState !=
+                                  AudioProcessingState.error) {
+                                return const SizedBox.shrink();
+                              }
+                              return Padding(
+                                padding: const EdgeInsets.only(top: 12),
+                                child: Text(
+                                  LocaleKeys.radio_play_interrupted.tr(),
+                                  textAlign: TextAlign.center,
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: colors.error,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 32),
+                        ],
                       ),
                     ),
-                  ],
-                  const SizedBox(height: 20),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _LiveBadge(colors: colors),
-                      if (station != null &&
-                          flowMix.ownsQueue(radioQueue.stations) &&
-                          flowMix.contains(station)) ...[
-                        const SizedBox(width: 8),
-                        _FlowMixFeedbackButton(
-                          station: station,
-                          hasNext: radioQueue.hasNext,
-                        ),
-                      ],
-                    ],
                   ),
-                  const Spacer(),
-                  _Controls(
-                    hasNext: radioQueue.hasNext,
-                    hasPrevious: radioQueue.hasPrevious,
-                    onNext: radioQueue.hasNext
-                        ? () => playNextRadioStation(context: context, ref: ref)
-                        : null,
-                    onPrevious: radioQueue.hasPrevious
-                        ? () => playPreviousRadioStation(
-                            context: context,
-                            ref: ref,
-                          )
-                        : null,
-                  ),
-                  StreamBuilder<PlaybackState>(
-                    stream: flowAudioHandler.playbackState,
-                    initialData: flowAudioHandler.playbackState.value,
-                    builder: (context, snapshot) {
-                      if (snapshot.data?.processingState !=
-                          AudioProcessingState.error) {
-                        return const SizedBox.shrink();
-                      }
-                      return Padding(
-                        padding: const EdgeInsets.only(top: 12),
-                        child: Text(
-                          LocaleKeys.radio_play_interrupted.tr(),
-                          textAlign: TextAlign.center,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: colors.error,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 40),
                 ],
-              ),
-            ),
+              );
+            },
           );
         },
       ),
@@ -268,36 +297,63 @@ class _FlowMixFeedbackButtonState
   }
 }
 
-class _Artwork extends StatelessWidget {
-  const _Artwork({required this.artUri, required this.colors});
+/// Portada a todo lo ancho, como el banner de Shazam: arriba un velo oscuro
+/// para que se lean la barra de estado y los botones, y abajo un degradado que
+/// la funde con la superficie donde van el titulo y los controles.
+class _HeroArtwork extends StatelessWidget {
+  const _HeroArtwork({required this.artUri, required this.colors});
 
   final String artUri;
   final ColorScheme colors;
 
   @override
   Widget build(BuildContext context) {
-    return AspectRatio(
-      aspectRatio: 1,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(28),
-          boxShadow: [
-            BoxShadow(
-              color: colors.primary.withValues(alpha: 0.25),
-              blurRadius: 40,
-              offset: const Offset(0, 12),
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        artUri.isEmpty
+            ? _Placeholder(colors: colors)
+            : OptimizedNetworkImage(
+                url: artUri,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => _Placeholder(colors: colors),
+              ),
+        DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              stops: const [0, 0.22, 0.5, 0.82, 1],
+              colors: [
+                Colors.black.withValues(alpha: 0.45),
+                Colors.black.withValues(alpha: 0),
+                colors.surface.withValues(alpha: 0),
+                colors.surface.withValues(alpha: 0.85),
+                colors.surface,
+              ],
             ),
-          ],
+          ),
         ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(28),
-          child: artUri.isEmpty
-              ? _Placeholder(colors: colors)
-              : OptimizedNetworkImage(
-                  url: artUri,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => _Placeholder(colors: colors),
-                ),
+      ],
+    );
+  }
+}
+
+/// Capsula translucida para que los iconos se lean sobre cualquier portada.
+class _GlassPill extends StatelessWidget {
+  const _GlassPill({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(28),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        child: ColoredBox(
+          color: Colors.black.withValues(alpha: 0.28),
+          child: child,
         ),
       ),
     );
@@ -342,13 +398,17 @@ class _LiveBadge extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: colors.primary,
-            ),
+          StreamBuilder<PlaybackState>(
+            stream: flowAudioHandler.playbackState,
+            initialData: flowAudioHandler.playbackState.value,
+            builder: (context, snapshot) {
+              final state = snapshot.data;
+              return PlayingBarsIndicator(
+                isPlaying: state != null && isAudiblePlayback(state),
+                color: colors.primary,
+                size: 14,
+              );
+            },
           ),
           const SizedBox(width: 8),
           Text(

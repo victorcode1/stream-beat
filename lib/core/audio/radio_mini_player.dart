@@ -5,6 +5,7 @@ import 'package:flow_music/core/utils/locale_keys.g.dart';
 import 'package:flow_music/features/radio/presentation/controllers/radio_queue_controller.dart';
 import 'package:flow_music/features/radio/presentation/utils/play_radio_station.dart';
 import 'package:flow_music/shared/widgets/optimized_network_image.dart';
+import 'package:flow_music/shared/widgets/playing_bars_indicator.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -53,7 +54,10 @@ class RadioMiniPlayer extends ConsumerWidget {
                     ),
                     child: Row(
                       children: [
-                        _Artwork(artUri: item.artUri),
+                        _Artwork(
+                          artUri: item.artUri,
+                          isPlaying: isPlaying && !hasError,
+                        ),
                         const SizedBox(width: 10),
                         Expanded(
                           child: Column(
@@ -178,32 +182,61 @@ class RadioMiniPlayerPrimaryControl extends StatelessWidget {
 }
 
 class _Artwork extends StatelessWidget {
-  const _Artwork({required this.artUri});
+  const _Artwork({required this.artUri, required this.isPlaying});
 
   final Uri? artUri;
 
+  /// Superpone las barras animadas mientras la emisora suena.
+  final bool isPlaying;
+
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
     return ClipRRect(
       borderRadius: BorderRadius.circular(10),
       child: SizedBox.square(
         dimension: 44,
-        child: artUri == null
-            ? ColoredBox(
-                color: colors.primary.withValues(alpha: 0.16),
-                child: Icon(Icons.radio_rounded, color: colors.primary),
-              )
-            : OptimizedNetworkImage(
-                url: artUri.toString(),
-                displaySize: 44,
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => ColoredBox(
-                  color: colors.primary.withValues(alpha: 0.16),
-                  child: Icon(Icons.radio_rounded, color: colors.primary),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            _image(context),
+            AnimatedOpacity(
+              opacity: isPlaying ? 1 : 0,
+              duration: const Duration(milliseconds: 250),
+              child: ColoredBox(
+                color: Colors.black.withValues(alpha: 0.42),
+                child: Center(
+                  child: PlayingBarsIndicator(
+                    isPlaying: isPlaying,
+                    color: Colors.white,
+                    size: 18,
+                  ),
                 ),
               ),
+            ),
+          ],
+        ),
       ),
+    );
+  }
+
+  Widget _image(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return SizedBox.square(
+      dimension: 44,
+      child: artUri == null
+          ? ColoredBox(
+              color: colors.primary.withValues(alpha: 0.16),
+              child: Icon(Icons.radio_rounded, color: colors.primary),
+            )
+          : OptimizedNetworkImage(
+              url: artUri.toString(),
+              displaySize: 44,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => ColoredBox(
+                color: colors.primary.withValues(alpha: 0.16),
+                child: Icon(Icons.radio_rounded, color: colors.primary),
+              ),
+            ),
     );
   }
 }
