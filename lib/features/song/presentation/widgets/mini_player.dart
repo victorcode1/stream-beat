@@ -11,6 +11,7 @@ import 'package:flow_music/features/radio/presentation/utils/play_radio_station.
 import 'package:flow_music/features/song/presentation/controllers/song_controller.dart';
 import 'package:flow_music/features/song/presentation/widgets/desktop_now_playing_bar.dart';
 import 'package:flow_music/features/song/presentation/widgets/track_change_transition.dart';
+import 'package:flow_music/shared/widgets/playing_bars_indicator.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -200,9 +201,8 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
     // the dedicated radio player instead.
     final hasSong = ref.read(songController).currentVideoId != null;
     if (!hasSong) {
-      Navigator.of(
-        context,
-      ).push(MaterialPageRoute(builder: (_) => const RadioPlayerPage()));
+      Navigator.of(context)
+          .push(MaterialPageRoute(builder: (_) => const RadioPlayerPage()));
       return;
     }
     ref
@@ -288,6 +288,7 @@ class _MiniPlayerBar extends StatelessWidget {
                           child: _Artwork(
                             artUri: item.artUri,
                             color: colors.primary,
+                            isPlaying: isPlaying,
                           ),
                         ),
                         const SizedBox(width: 10),
@@ -455,14 +456,52 @@ class _MiniTransportButton extends StatelessWidget {
 }
 
 class _Artwork extends StatelessWidget {
-  const _Artwork({required this.artUri, required this.color});
+  const _Artwork({
+    required this.artUri,
+    required this.color,
+    required this.isPlaying,
+  });
 
   final Uri? artUri;
   final Color color;
 
+  /// Superpone las barras animadas mientras suena el audio.
+  final bool isPlaying;
+
+  static const _size = 38.0;
+
   @override
   Widget build(BuildContext context) {
-    const size = 38.0;
+    return SizedBox.square(
+      dimension: _size,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          _image(),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: AnimatedOpacity(
+              opacity: isPlaying ? 1 : 0,
+              duration: const Duration(milliseconds: 250),
+              child: ColoredBox(
+                color: Colors.black.withValues(alpha: 0.42),
+                child: Center(
+                  child: PlayingBarsIndicator(
+                    isPlaying: isPlaying,
+                    color: Colors.white,
+                    size: 16,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _image() {
+    const size = _size;
     final fallback = Container(
       width: size,
       height: size,
