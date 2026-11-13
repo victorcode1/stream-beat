@@ -51,7 +51,14 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig signingConfigs.debug
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
+    }
+
+    // El lint vital de url_launcher_android y video_player_android falla con
+    // AGP 9; el lint se sigue pudiendo correr a mano con `gradlew lint`.
+    lint {
+        checkReleaseBuilds false
     }
 }
 
