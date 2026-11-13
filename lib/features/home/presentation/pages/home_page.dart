@@ -11,6 +11,7 @@ import 'package:flow_music/features/home/presentation/widgets/home_mobile_bottom
 import 'package:flow_music/features/home/presentation/widgets/home_page_content.dart';
 import 'package:flow_music/features/search/presentation/widgets/search_song.dart';
 import 'package:flow_music/features/song/presentation/widgets/mini_player.dart';
+import 'package:flow_music/features/song/presentation/widgets/modern_player_hero.dart';
 import 'package:flutter/material.dart' hide SearchDelegate;
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -126,7 +127,7 @@ class _HomePageState extends ConsumerState<HomePage> {
       );
     }
 
-    return Scaffold(
+    final shell = Scaffold(
       backgroundColor: Colors.transparent,
       // Configuracion ya trae su propia cabecera movil. La mantenemos dentro
       // de este shell para que la barra inferior no desaparezca al cambiar de
@@ -157,6 +158,14 @@ class _HomePageState extends ConsumerState<HomePage> {
         showMiniPlayer: showMiniPlayer,
         setQuery: viewCtr.setQuery,
       ),
+    );
+
+    if (!showNowPlayingDetails) return shell;
+    // Con el reproductor abierto toda la pantalla pasa a oscuro (barra
+    // superior, inferior y hora del sistema), sea cual sea el estilo.
+    return ColoredBox(
+      color: const Color(0xFF0B0B0C),
+      child: Theme(data: playerOnDarkTheme(Theme.of(context)), child: shell),
     );
   }
 }
