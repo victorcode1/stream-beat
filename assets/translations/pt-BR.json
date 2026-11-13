@@ -78,6 +78,7 @@
   "loading": "Carregando...",
   "error": "Ocorreu um erro",
   "retry": "Tentar novamente",
+  "no_internet": "Sem internet. Aguardando a conexão voltar.",
   "radio_play_interrupted": "A reprodução foi interrompida. Verifique sua conexão e pressione reproduzir para tentar novamente.",
   "no_id_song": "Música sem ID",
   "configure_source": "Configurar fonte",

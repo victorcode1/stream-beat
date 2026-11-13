@@ -1,3 +1,4 @@
+import 'package:flow_music/core/connectivity/offline_banner.dart';
 import 'package:flow_music/features/home/presentation/widgets/home_suggestions.dart';
 import 'package:flutter/material.dart';
 
@@ -9,12 +10,19 @@ class HomePageContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 500),
-      transitionBuilder: (child, animation) {
-        return SizeTransition(sizeFactor: animation, child: child);
-      },
-      child: child ?? const HomeSuggestions(),
+    return Column(
+      children: [
+        const OfflineBanner(),
+        Expanded(
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 500),
+            transitionBuilder: (child, animation) {
+              return SizeTransition(sizeFactor: animation, child: child);
+            },
+            child: child ?? const HomeSuggestions(),
+          ),
+        ),
+      ],
     );
   }
 }

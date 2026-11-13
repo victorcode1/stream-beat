@@ -82,6 +82,7 @@ abstract class LocaleKeys {
   static const loading = 'loading';
   static const error = 'error';
   static const retry = 'retry';
+  static const no_internet = 'no_internet';
   static const radio_play_interrupted = 'radio_play_interrupted';
   static const no_id_song = 'no_id_song';
   static const configure_source = 'configure_source';
