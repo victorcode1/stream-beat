@@ -58,6 +58,13 @@ class HomeAppBarActionController {
     required DownloadedAudio item,
   }) async {
     switch (action) {
+      case HomeAppBarMenuAction.toggleVideo:
+        final controller = ref.read(songController);
+        return controller.switchMode(
+          controller.currentMode == PlaybackMode.video
+              ? PlaybackMode.audio
+              : PlaybackMode.video,
+        );
       case HomeAppBarMenuAction.favorite:
         if (item.videoId.isEmpty) return;
         final added = await ref
@@ -122,6 +129,7 @@ class HomeAppBarActionController {
 }
 
 enum HomeAppBarMenuAction {
+  toggleVideo,
   favorite,
   queue,
   share,

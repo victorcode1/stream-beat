@@ -225,9 +225,9 @@ class _ScreenPlayState extends ConsumerState<ScreenPlay>
                   : null,
             ),
           ),
-          // En movil, accesos rapidos al pie (Video / Cola). En escritorio el
-          // riel lateral cubre la cola, asi que se ocultan.
-          if (!isDesktop)
+          // Los accesos Video / Cola / Compartir viven en la barra superior
+          // del shell; solo la pantalla suelta (sin shell) los lleva al pie.
+          if (!isDesktop && widget.standalone)
             _PlayerActionChips(
               isVideo: controller.currentMode == PlaybackMode.video,
               onToggleVideo: () => controller.switchMode(

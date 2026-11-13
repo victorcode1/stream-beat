@@ -245,9 +245,53 @@ class _NowPlayingDetailsBar extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(width: 8),
+        // Accesos rapidos que antes iban en chips al pie del reproductor:
+        // en la barra liberan espacio para la caratula.
+        _NowPlayingBarAction(
+          icon: state.item.isVideo
+              ? Icons.videocam_rounded
+              : Icons.videocam_outlined,
+          tooltip: LocaleKeys.video.tr(),
+          selected: state.item.isVideo,
+          onPressed: () => onSelected(HomeAppBarMenuAction.toggleVideo),
+        ),
+        _NowPlayingBarAction(
+          icon: Icons.queue_music_rounded,
+          tooltip: LocaleKeys.queue.tr(),
+          onPressed: () => onSelected(HomeAppBarMenuAction.queue),
+        ),
+        _NowPlayingBarAction(
+          icon: Icons.ios_share_rounded,
+          tooltip: LocaleKeys.share.tr(),
+          onPressed: () => onSelected(HomeAppBarMenuAction.share),
+        ),
         _NowPlayingMenuButton(state: state, onSelected: onSelected),
       ],
+    );
+  }
+}
+
+class _NowPlayingBarAction extends StatelessWidget {
+  const _NowPlayingBarAction({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+    this.selected = false,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onPressed;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return IconButton(
+      tooltip: tooltip,
+      onPressed: onPressed,
+      visualDensity: VisualDensity.compact,
+      icon: Icon(icon, color: selected ? colors.primary : colors.onSurface),
     );
   }
 }
@@ -306,20 +350,6 @@ class _NowPlayingMenuButton extends StatelessWidget {
               label: state.isFavorite
                   ? LocaleKeys.remove_from_favorites.tr()
                   : LocaleKeys.add_to_favorites.tr(),
-            ),
-          ),
-          PopupMenuItem(
-            value: HomeAppBarMenuAction.queue,
-            child: _NowPlayingMenuRow(
-              icon: Icons.queue_music_rounded,
-              label: LocaleKeys.queue.tr(),
-            ),
-          ),
-          PopupMenuItem(
-            value: HomeAppBarMenuAction.share,
-            child: _NowPlayingMenuRow(
-              icon: Icons.ios_share_rounded,
-              label: LocaleKeys.share_song.tr(),
             ),
           ),
           PopupMenuItem(
