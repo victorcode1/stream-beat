@@ -97,6 +97,16 @@ class FlowAudioHandler extends BaseAudioHandler with SeekHandler {
   }
 
   final AudioPlayer player = AudioPlayer();
+
+  /// Reproduce silencio mientras se pasa de una cancion a otra.
+  ///
+  /// iOS suspende una app de audio en segundo plano en cuanto deja de sonar.
+  /// Entre el fin de una cancion y el inicio de la siguiente hay que resolver
+  /// y cargar la nueva fuente, y la tarea en segundo plano no siempre alcanza:
+  /// la app quedaba congelada hasta volver a abrirla. Con este reproductor el
+  /// audio nunca se detiene durante el cambio.
+  late final AudioPlayer _gapPlayer = AudioPlayer(playerId: 'transition_gap');
+  static const _gapSource = 'audio/silence.wav';
   final List<StreamSubscription> _subscriptions = [];
   PlayerState _playerState = PlayerState.stopped;
   Duration _position = Duration.zero;
@@ -301,7 +311,38 @@ class FlowAudioHandler extends BaseAudioHandler with SeekHandler {
     unawaited(_runFade(from: 0, to: 1, total: _fadeInDuration));
   }
 
-  Future<void> _handleCompletion() => withBackgroundTime(_completeAndAdvance);
+  Future<void> _handleCompletion() => _withoutAudioGap(_completeAndAdvance);
+
+  bool get _needsGapAudio =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
+
+  /// Ejecuta un cambio de cancion sin dejar a iOS un hueco sin audio.
+  Future<void> _withoutAudioGap(Future<void> Function() body) async {
+    if (!_needsGapAudio) return withBackgroundTime(body);
+    await _startGapAudio();
+    try {
+      await withBackgroundTime(body);
+    } finally {
+      await _stopGapAudio();
+    }
+  }
+
+  Future<void> _startGapAudio() async {
+    try {
+      await _gapPlayer.setReleaseMode(ReleaseMode.loop);
+      await _gapPlayer.play(AssetSource(_gapSource));
+    } catch (error) {
+      debugPrint('Transition gap audio failed to start: $error');
+    }
+  }
+
+  Future<void> _stopGapAudio() async {
+    try {
+      await _gapPlayer.stop();
+    } catch (error) {
+      debugPrint('Transition gap audio failed to stop: $error');
+    }
+  }
 
   Future<void> _completeAndAdvance() async {
     final generation = _sourceGeneration;
@@ -438,14 +479,14 @@ class FlowAudioHandler extends BaseAudioHandler with SeekHandler {
   Future<void> skipToNext() async {
     final hook = onSkipToNext;
     if (hook == null) return;
-    await withBackgroundTime(hook);
+    await _withoutAudioGap(hook);
   }
 
   @override
   Future<void> skipToPrevious() async {
     final hook = onSkipToPrevious;
     if (hook != null) {
-      await withBackgroundTime(hook);
+      await _withoutAudioGap(hook);
       return;
     }
     await seek(Duration.zero);
@@ -456,6 +497,7 @@ class FlowAudioHandler extends BaseAudioHandler with SeekHandler {
       await subscription.cancel();
     }
     await player.dispose();
+    await _gapPlayer.dispose();
   }
 
   void _setMediaItem({
