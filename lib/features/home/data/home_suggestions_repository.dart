@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flow_music/features/autoplay/data/mix_playlist_repository.dart';
 import 'package:flow_music/features/home/data/apple_top_charts_service.dart';
 import 'package:flow_music/features/home/data/location_service.dart';
+import 'package:flow_music/features/home/data/youtube_music_charts.dart';
 import 'package:flow_music/features/search/data/models/youtube_search_suggestion.dart';
 import 'package:flow_music/features/search/data/repositories/song_title_normalizer.dart';
 import 'package:flow_music/features/search/data/repositories/youtube_suggestions_repository.dart';
@@ -15,12 +16,16 @@ typedef HomeSearchLoader =
     });
 typedef HomeMixLoader =
     Future<MixPlaylistPage> Function(YouTubeSearchSuggestion seed);
+typedef HomeChartLoader =
+    Future<List<YouTubeSearchSuggestion>> Function(String countryCode);
 
 /// Resultado de `HomeSuggestionsRepository.load`.
 class HomeSuggestionsResult {
   const HomeSuggestionsResult({
     required this.suggestions,
     required this.countryName,
+    this.chart = const [],
+    this.forYou = const [],
   });
 
   /// Lista de canciones sugeridas para mostrar.
@@ -29,6 +34,12 @@ class HomeSuggestionsResult {
   /// Nombre legible del pais resuelto (`Colombia`, `United States`...).
   /// `null` cuando no se pudo resolver y se usaron fallback genericos.
   final String? countryName;
+
+  /// Exitos del pais en su orden (#1 primero), para la lista numerada.
+  final List<YouTubeSearchSuggestion> chart;
+
+  /// Radio de lo ultimo que se escucho, para «Para ti».
+  final List<YouTubeSearchSuggestion> forYou;
 }
 
 /// Fuente de sugerencias para la pantalla inicial.
@@ -51,15 +62,25 @@ class HomeSuggestionsRepository {
     AppleTopChartsService? appleService,
     HomeSearchLoader? searchLoader,
     HomeMixLoader? mixLoader,
+    HomeChartLoader? chartLoader,
+    String? Function()? localeCountry,
   }) : _locationService = locationService ?? const LocationService(),
        _appleService = appleService ?? const AppleTopChartsService(),
        _searchLoader = searchLoader ?? fetchYouTubeSearchSuggestions,
-       _mixLoader = mixLoader ?? fetchMixPlaylist;
+       _mixLoader = mixLoader ?? fetchMixPlaylist,
+       _chartLoader = chartLoader ?? fetchYouTubeMusicTrending,
+       _localeCountry = localeCountry ?? _deviceCountry;
 
   final LocationService _locationService;
   final AppleTopChartsService _appleService;
   final HomeSearchLoader _searchLoader;
   final HomeMixLoader _mixLoader;
+  final HomeChartLoader _chartLoader;
+  final String? Function() _localeCountry;
+
+  /// Pais de la configuracion del telefono, para cuando no hay ubicacion.
+  static String? _deviceCountry() =>
+      PlatformDispatcher.instance.locale.countryCode;
 
   /// Cuantas canciones del top intentamos resolver contra YouTube y el tamano
   /// de cada lote concurrente (para no saturar a YouTube).
@@ -118,29 +139,26 @@ class HomeSuggestionsRepository {
     int rotation = 0,
     List<YouTubeSearchSuggestion> recentlyPlayed = const [],
   }) async {
-    final country = await _locationService.resolveCountry();
-
-    // Las dos fuentes van en paralelo: la personal (radio de lo ultimo que
-    // escucho) y el top real del pais.
-    final personal = await _personalPicks(
+    // La parte personal no depende del pais: arranca ya, en paralelo.
+    final personalFuture = _personalPicks(
       recentlyPlayed: recentlyPlayed,
       rotation: rotation,
     );
+    final country = await _locationService.resolveCountry();
+    final chartFuture = _countryChart(country);
+    final personal = await personalFuture;
+    final chart = await chartFuture;
 
-    final topSongs = await _appleService.fetchTopSongs(
-      countryCode: country.countryCode,
-    );
-    final chart = topSongs.isEmpty
-        ? const <YouTubeSearchSuggestion>[]
-        : await _resolveTopSongs(
-            _rotated(topSongs, rotation * _chartRotationStep),
-          );
-
-    final merged = _merge([personal, chart]);
+    final merged = _merge([
+      personal,
+      _rotated(chart, rotation * _chartRotationStep),
+    ]);
     if (merged.isNotEmpty) {
       return HomeSuggestionsResult(
         suggestions: merged,
         countryName: country.countryName,
+        chart: chart,
+        forYou: personal,
       );
     }
 
@@ -155,6 +173,26 @@ class HomeSuggestionsRepository {
       suggestions: suggestions,
       countryName: country.countryName,
     );
+  }
+
+  /// Exitos del pais: primero YouTube Music (dos llamadas, ya con videos); si
+  /// falla, el top de Apple resuelto contra YouTube como antes.
+  Future<List<YouTubeSearchSuggestion>> _countryChart(
+    ResolvedCountry country,
+  ) async {
+    final code = country.countryCode ?? _localeCountry() ?? 'ZZ';
+    try {
+      final chart = await _chartLoader(code);
+      if (chart.isNotEmpty) return chart;
+    } catch (error) {
+      debugPrint('YouTube Music chart for $code failed: $error');
+    }
+
+    final topSongs = await _appleService.fetchTopSongs(
+      countryCode: country.countryCode,
+    );
+    if (topSongs.isEmpty) return const [];
+    return _resolveTopSongs(topSongs);
   }
 
   /// Parte "para ti": la radio de las ultimas canciones escuchadas. Se rota que

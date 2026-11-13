@@ -41,7 +41,9 @@ abstract final class FlowDesktopTheme {
   /// Devuelve [base] re-tintado con las superficies del diseno de escritorio.
   static ThemeData of(ThemeData base) {
     final isDark = base.brightness == Brightness.dark;
-    final colors = isDark ? _darkScheme(base.colorScheme) : _lightScheme(base.colorScheme);
+    final colors = isDark
+        ? _darkScheme(base.colorScheme)
+        : _lightScheme(base.colorScheme);
     final extras = base.extension<FlowThemeExtras>();
 
     // Las superficies elevadas (hojas, menus, dialogos) del tema base guardan

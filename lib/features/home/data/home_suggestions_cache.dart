@@ -67,18 +67,50 @@ String encodeCachedHomeSuggestions({
   return jsonEncode({
     'savedAt': savedAt.toIso8601String(),
     'countryName': result.countryName,
-    'suggestions': result.suggestions
-        .map(
-          (suggestion) => {
-            'videoId': suggestion.videoId,
-            'title': suggestion.displayText,
-            'artist': suggestion.channelTitle,
-            'thumbnailUrl': suggestion.thumbnailUrl,
-            'durationMs': suggestion.duration?.inMilliseconds,
-          },
-        )
-        .toList(growable: false),
+    'suggestions': _encodeList(result.suggestions),
+    'chart': _encodeList(result.chart),
+    'forYou': _encodeList(result.forYou),
   });
+}
+
+List<Map<String, Object?>> _encodeList(List<YouTubeSearchSuggestion> items) {
+  return items
+      .map(
+        (suggestion) => {
+          'videoId': suggestion.videoId,
+          'title': suggestion.displayText,
+          'artist': suggestion.channelTitle,
+          'thumbnailUrl': suggestion.thumbnailUrl,
+          'durationMs': suggestion.duration?.inMilliseconds,
+        },
+      )
+      .toList(growable: false);
+}
+
+List<YouTubeSearchSuggestion> _decodeList(Object? items) {
+  if (items is! List) return const [];
+  final suggestions = <YouTubeSearchSuggestion>[];
+  for (final item in items) {
+    if (item is! Map) continue;
+    final videoId = item['videoId'];
+    final title = item['title'];
+    if (videoId is! String || videoId.isEmpty) continue;
+    if (title is! String || title.isEmpty) continue;
+
+    final durationMs = item['durationMs'];
+    suggestions.add(
+      YouTubeSearchSuggestion(
+        videoId: videoId,
+        displayText: title,
+        channelTitle: item['artist'] as String? ?? '',
+        thumbnailUrl: item['thumbnailUrl'] as String? ?? '',
+        duration: durationMs is int && durationMs > 0
+            ? Duration(milliseconds: durationMs)
+            : null,
+      ),
+    );
+  }
+  return suggestions;
 }
 
 /// Lee lo guardado. Devuelve null ante cualquier cosa inesperada: mejor volver a
@@ -93,36 +125,15 @@ CachedHomeSuggestions? decodeCachedHomeSuggestions(String raw) {
     final savedAt = savedAtRaw is String ? DateTime.tryParse(savedAtRaw) : null;
     if (savedAt == null) return null;
 
-    final items = decoded['suggestions'];
-    if (items is! List) return null;
-
-    final suggestions = <YouTubeSearchSuggestion>[];
-    for (final item in items) {
-      if (item is! Map) continue;
-      final videoId = item['videoId'];
-      final title = item['title'];
-      if (videoId is! String || videoId.isEmpty) continue;
-      if (title is! String || title.isEmpty) continue;
-
-      final durationMs = item['durationMs'];
-      suggestions.add(
-        YouTubeSearchSuggestion(
-          videoId: videoId,
-          displayText: title,
-          channelTitle: item['artist'] as String? ?? '',
-          thumbnailUrl: item['thumbnailUrl'] as String? ?? '',
-          duration: durationMs is int && durationMs > 0
-              ? Duration(milliseconds: durationMs)
-              : null,
-        ),
-      );
-    }
+    final suggestions = _decodeList(decoded['suggestions']);
     if (suggestions.isEmpty) return null;
 
     return CachedHomeSuggestions(
       result: HomeSuggestionsResult(
         suggestions: suggestions,
         countryName: decoded['countryName'] as String?,
+        chart: _decodeList(decoded['chart']),
+        forYou: _decodeList(decoded['forYou']),
       ),
       savedAt: savedAt,
     );

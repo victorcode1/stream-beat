@@ -219,7 +219,8 @@ class _SidebarPlaylistRow extends StatelessWidget {
           borderRadius: BorderRadius.circular(10),
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (_) => LibraryPlaylistDetailPage(playlistId: playlist.id),
+              builder: (_) =>
+                  LibraryPlaylistDetailPage(playlistId: playlist.id),
             ),
           ),
           child: Padding(

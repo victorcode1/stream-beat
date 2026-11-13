@@ -176,6 +176,12 @@ abstract class LocaleKeys {
   static const made_for_you = 'made_for_you';
   static const see_all = 'see_all';
   static const theme_and_appearance = 'theme_and_appearance';
+  static const visual_style = 'visual_style';
+  static const visual_style_always_dark = 'visual_style_always_dark';
+  static const visual_style_mola_desc = 'visual_style_mola_desc';
+  static const visual_style_clasico_desc = 'visual_style_clasico_desc';
+  static const visual_style_monocromo_desc = 'visual_style_monocromo_desc';
+  static const visual_style_carteles_desc = 'visual_style_carteles_desc';
   static const continuous_playback = 'continuous_playback';
   static const default_playback_mode = 'default_playback_mode';
   static const current_default_playback_mode = 'current_default_playback_mode';
@@ -314,4 +320,7 @@ abstract class LocaleKeys {
   static const songs = 'songs';
   static const top_result = 'top_result';
   static const playback_speed = 'playback_speed';
+  static const chart_in_country = 'chart_in_country';
+  static const chart_now = 'chart_now';
+  static const explore_genres = 'explore_genres';
 }

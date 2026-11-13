@@ -1,4 +1,5 @@
 import 'package:flow_music/core/theme/custom_theme.dart';
+import 'package:flow_music/core/theme/visual_style.dart';
 import 'package:flutter/material.dart';
 
 /// Fondo ambiente de la app. Usa el color primario del tema, por lo que cambia
@@ -24,6 +25,18 @@ class FlowAmbientBackground extends StatelessWidget {
 
     double alpha(double dark, double light) {
       return (isDark ? dark : light) * clampedIntensity;
+    }
+
+    // Solo el estilo Clasico lleva los resplandores del acento; los demas
+    // estilos pintan su propio fondo (tela, negro o escala neutra).
+    if (context.styleTokens.style != VisualStyle.clasico) {
+      return DecoratedBox(
+        decoration: BoxDecoration(
+          color: colors.surface,
+          gradient: extras?.secondaryGradient,
+        ),
+        child: child,
+      );
     }
 
     return DecoratedBox(

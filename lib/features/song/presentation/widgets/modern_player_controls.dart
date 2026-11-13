@@ -250,6 +250,7 @@ class ModernPlayerControls extends StatelessWidget {
                 children: [
                   _WaveformSeekBar(
                     progress: progress,
+                    isPlaying: isPlaying,
                     activeColor: theme.colorScheme.primary,
                     inactiveColor: theme.colorScheme.onSurface.withValues(
                       alpha: 0.22,
@@ -402,18 +403,59 @@ class ModernPlayerControls extends StatelessWidget {
 /// Barra de progreso tipo onda (waveform) del reproductor inmersivo, igual al
 /// diseno StreamBeat. La parte reproducida se pinta con el verde de marca y el
 /// resto atenuado; tocar o arrastrar busca esa posicion.
-class _WaveformSeekBar extends StatelessWidget {
+///
+/// Mientras suena, las barras ondulan y las cercanas al punto de reproduccion
+/// saltan mas, como un medidor en vivo que avanza con la cancion. En pausa se
+/// quedan quietas.
+class _WaveformSeekBar extends StatefulWidget {
   const _WaveformSeekBar({
     required this.progress,
+    required this.isPlaying,
     required this.activeColor,
     required this.inactiveColor,
     required this.onSeek,
   });
 
   final double progress;
+  final bool isPlaying;
   final Color activeColor;
   final Color inactiveColor;
   final ValueChanged<double>? onSeek;
+
+  @override
+  State<_WaveformSeekBar> createState() => _WaveformSeekBarState();
+}
+
+class _WaveformSeekBarState extends State<_WaveformSeekBar>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulse = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1400),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.isPlaying) _pulse.repeat();
+  }
+
+  @override
+  void didUpdateWidget(covariant _WaveformSeekBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isPlaying == oldWidget.isPlaying) return;
+    if (widget.isPlaying) {
+      _pulse.repeat();
+    } else {
+      // Se queda donde este, sin saltar de golpe a la forma inicial.
+      _pulse.stop();
+    }
+  }
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -421,22 +463,26 @@ class _WaveformSeekBar extends StatelessWidget {
       builder: (context, constraints) {
         final width = constraints.maxWidth;
         void seek(double dx) {
-          if (onSeek == null || width <= 0) return;
-          onSeek!((dx / width).clamp(0.0, 1.0));
+          if (widget.onSeek == null || width <= 0) return;
+          widget.onSeek!((dx / width).clamp(0.0, 1.0));
         }
 
         return GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTapDown: (d) => seek(d.localPosition.dx),
           onHorizontalDragUpdate: (d) => seek(d.localPosition.dx),
-          child: SizedBox(
-            height: 40,
-            width: width,
-            child: CustomPaint(
-              painter: _WaveformPainter(
-                progress: progress,
-                activeColor: activeColor,
-                inactiveColor: inactiveColor,
+          // La animacion solo repinta la onda, sin reconstruir los controles.
+          child: RepaintBoundary(
+            child: SizedBox(
+              height: 40,
+              width: width,
+              child: CustomPaint(
+                painter: _WaveformPainter(
+                  progress: widget.progress,
+                  pulse: _pulse,
+                  activeColor: widget.activeColor,
+                  inactiveColor: widget.inactiveColor,
+                ),
               ),
             ),
           ),
@@ -449,13 +495,18 @@ class _WaveformSeekBar extends StatelessWidget {
 class _WaveformPainter extends CustomPainter {
   _WaveformPainter({
     required this.progress,
+    required this.pulse,
     required this.activeColor,
     required this.inactiveColor,
-  });
+  }) : super(repaint: pulse);
 
   final double progress;
+  final Animation<double> pulse;
   final Color activeColor;
   final Color inactiveColor;
+
+  /// Cuantas barras alrededor del punto de reproduccion saltan con fuerza.
+  static const double _focusSpread = 9;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -472,13 +523,26 @@ class _WaveformPainter extends CustomPainter {
     final centerY = size.height / 2;
     final maxBar = size.height;
     const minFactor = 0.18;
+    final phase = pulse.value * 2 * math.pi;
+    final playhead = progress * barCount;
 
     for (var i = 0; i < barCount; i++) {
       // Patron determinista con varias frecuencias para que parezca una onda
       // real sin depender de aleatoriedad (que rompe el repintado estable).
       final wave =
           0.5 + 0.30 * math.sin(i * 0.55) + 0.20 * math.sin(i * 1.7 + 0.9);
-      final factor = (minFactor + (1 - minFactor) * wave).clamp(minFactor, 1.0);
+      // Cerca del punto de reproduccion la barra salta mas; lejos apenas
+      // respira. Cada barra va desfasada para que no suban todas a la vez.
+      final distance = (i - playhead).abs();
+      final focus = math.exp(
+        -(distance * distance) / (2 * _focusSpread * _focusSpread),
+      );
+      final amplitude = 0.08 + 0.42 * focus;
+      final motion = 1 + amplitude * math.sin(phase * 2 + i * 0.9);
+      final factor = (minFactor + (1 - minFactor) * wave * motion).clamp(
+        minFactor,
+        1.0,
+      );
       final barHeight = maxBar * factor;
       final x = i * step;
       final filled = (i + 0.5) / barCount <= progress;
@@ -493,6 +557,7 @@ class _WaveformPainter extends CustomPainter {
   @override
   bool shouldRepaint(_WaveformPainter oldDelegate) {
     return oldDelegate.progress != progress ||
+        oldDelegate.pulse != pulse ||
         oldDelegate.activeColor != activeColor ||
         oldDelegate.inactiveColor != inactiveColor;
   }

@@ -172,6 +172,12 @@
   "made_for_you": "Made for you",
   "see_all": "See all",
   "theme_and_appearance": "Theme & appearance",
+  "visual_style": "Visual style",
+  "visual_style_always_dark": "This style is always dark.",
+  "visual_style_mola_desc": "Layers of color on black, like a Guna mola.",
+  "visual_style_clasico_desc": "The original design, with your accent color.",
+  "visual_style_monocromo_desc": "Fine grays and a single accent.",
+  "visual_style_carteles_desc": "Fluorescent on black, like dance posters.",
   "continuous_playback": "Continuous playback",
   "default_playback_mode": "Default playback",
   "current_default_playback_mode": "Current mode",
@@ -305,5 +311,8 @@
   "title": "Title",
   "songs": "Songs",
   "top_result": "Top result",
-  "playback_speed": "Speed"
+  "playback_speed": "Speed",
+  "chart_in_country": "Top hits in {}",
+  "chart_now": "Top hits right now",
+  "explore_genres": "Explore"
 }

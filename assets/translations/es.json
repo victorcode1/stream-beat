@@ -172,6 +172,12 @@
   "made_for_you": "Hecho para ti",
   "see_all": "Ver todo",
   "theme_and_appearance": "Tema y apariencia",
+  "visual_style": "Estilo visual",
+  "visual_style_always_dark": "Este estilo siempre se ve en oscuro.",
+  "visual_style_mola_desc": "Capas de color sobre negro, como una mola guna.",
+  "visual_style_clasico_desc": "El diseño de siempre, con tu color de acento.",
+  "visual_style_monocromo_desc": "Grises finos y un solo acento.",
+  "visual_style_carteles_desc": "Flúor sobre negro, como los afiches de baile.",
   "continuous_playback": "Reproducción continua",
   "default_playback_mode": "Reproducción predeterminada",
   "current_default_playback_mode": "Modo actual",
@@ -305,5 +311,8 @@
   "title": "Título",
   "songs": "Canciones",
   "top_result": "Resultado principal",
-  "playback_speed": "Velocidad"
+  "playback_speed": "Velocidad",
+  "chart_in_country": "Éxitos en {}",
+  "chart_now": "Éxitos del momento",
+  "explore_genres": "Explorar"
 }

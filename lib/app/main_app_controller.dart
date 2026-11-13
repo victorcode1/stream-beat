@@ -203,6 +203,11 @@ class MainAppController {
       ..showSnackBar(
         SnackBar(
           content: Text(message),
+          // Con accion, Flutter deja el aviso fijo hasta que se cierra a mano
+          // y tapaba los controles del reproductor. Los exitos ya salen del
+          // pais del telefono, asi que basta con mostrarlo unos segundos.
+          persist: false,
+          duration: const Duration(seconds: 6),
           action: SnackBarAction(
             label: 'Ajustes',
             onPressed: () {

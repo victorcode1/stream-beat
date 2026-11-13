@@ -6,6 +6,7 @@ import 'package:flow_music/features/history/data/playback_history_entry.dart';
 import 'package:flow_music/features/history/presentation/controllers/playback_history_controller.dart';
 import 'package:flow_music/features/home/presentation/controllers/home_view_controller.dart';
 import 'package:flow_music/features/home/presentation/providers/home_suggestions_provider.dart';
+import 'package:flow_music/features/home/presentation/widgets/home_mobile_sections.dart';
 import 'package:flow_music/features/search/data/models/youtube_search_suggestion.dart';
 import 'package:flow_music/features/settings/presentation/controllers/autoplay_enabled_controller.dart';
 import 'package:flutter/material.dart';
@@ -87,8 +88,10 @@ class HomeSuggestions extends ConsumerWidget {
         // la cancion tocada. Esto arranca el prefetch rodante en segundo plano
         // de las siguientes pistas (ver AutoplayQueueController._pumpPrefetch)
         // para que el boton "next" pueda avanzar al instante.
-        void onSuggestionTap(YouTubeSearchSuggestion suggestion) {
-          final items = result.suggestions;
+        void playFrom(
+          List<YouTubeSearchSuggestion> items,
+          YouTubeSearchSuggestion suggestion,
+        ) {
           final index = items.indexWhere(
             (s) => s.videoId == suggestion.videoId,
           );
@@ -100,6 +103,17 @@ class HomeSuggestions extends ConsumerWidget {
           }
           viewCtr.listen(suggestion);
         }
+
+        void onSuggestionTap(YouTubeSearchSuggestion suggestion) =>
+            playFrom(result.suggestions, suggestion);
+
+        // Una cache guardada antes de separar las secciones solo trae la
+        // lista mezclada: se muestra entera como «Para ti».
+        final forYou = result.forYou.isNotEmpty
+            ? result.forYou
+            : result.chart.isEmpty
+            ? result.suggestions
+            : const <YouTubeSearchSuggestion>[];
 
         void onCategory(_HomeCategory category) {
           switch (category.kind) {
@@ -114,6 +128,11 @@ class HomeSuggestions extends ConsumerWidget {
 
         return _SuggestionsGrid(
           items: result.suggestions,
+          chart: result.chart,
+          forYou: forYou,
+          countryName: result.countryName,
+          onChartTap: (item) => playFrom(result.chart, item),
+          onForYouTap: (item) => playFrom(forYou, item),
           history: history,
           userName: null,
           onCategory: onCategory,
@@ -177,45 +196,6 @@ class HomeSuggestions extends ConsumerWidget {
       loading: () => const Center(
         child: CircularProgressIndicator.adaptive(strokeWidth: 2),
       ),
-    );
-  }
-}
-
-/// Encabezado "Descubre" con saludo segun la hora, igual al diseno StreamBeat.
-class _DiscoverHeader extends StatelessWidget {
-  const _DiscoverHeader();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
-    final hour = DateTime.now().hour;
-    final greetingKey = hour < 12
-        ? LocaleKeys.greeting_morning
-        : hour < 19
-        ? LocaleKeys.greeting_afternoon
-        : LocaleKeys.greeting_evening;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          greetingKey.tr(),
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: colors.onSurfaceVariant,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          LocaleKeys.discover.tr(),
-          style: theme.textTheme.headlineMedium?.copyWith(
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.6,
-          ),
-        ),
-      ],
     );
   }
 }
@@ -293,6 +273,11 @@ class _CategoryChip extends StatelessWidget {
 class _SuggestionsGrid extends StatelessWidget {
   const _SuggestionsGrid({
     required this.items,
+    required this.chart,
+    required this.forYou,
+    required this.countryName,
+    required this.onChartTap,
+    required this.onForYouTap,
     required this.history,
     required this.userName,
     required this.onCategory,
@@ -302,6 +287,11 @@ class _SuggestionsGrid extends StatelessWidget {
   });
 
   final List<YouTubeSearchSuggestion> items;
+  final List<YouTubeSearchSuggestion> chart;
+  final List<YouTubeSearchSuggestion> forYou;
+  final String? countryName;
+  final ValueChanged<YouTubeSearchSuggestion> onChartTap;
+  final ValueChanged<YouTubeSearchSuggestion> onForYouTap;
   final List<PlaybackHistoryEntry> history;
   final String? userName;
   final void Function(_HomeCategory) onCategory;
@@ -324,59 +314,99 @@ class _SuggestionsGrid extends StatelessWidget {
       );
     }
 
-    final featured = items.first;
-    final rest = items.skip(1).toList(growable: false);
+    // Inicio movil: primero lo que sonaba, para retomarlo con un toque; luego
+    // lo escuchado hace poco, los exitos del pais numerados, «Para ti» y los
+    // generos para explorar.
+    final continueEntry = history.isEmpty ? null : history.first;
+    final recent = history.skip(1).toList(growable: false);
+    final chartTitle = countryName == null || countryName!.isEmpty
+        ? LocaleKeys.chart_now.tr()
+        : LocaleKeys.chart_in_country.tr(args: [countryName!]);
+    var sectionIndex = 0;
+
+    SliverToBoxAdapter header(String title, {Widget? trailing}) {
+      final index = sectionIndex++;
+      return SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 28, 20, 12),
+          child: HomeSectionHeader(
+            title: title,
+            index: index,
+            trailing: trailing,
+          ),
+        ),
+      );
+    }
 
     return RefreshIndicator(
       onRefresh: () async => onRefresh(),
       child: CustomScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
+          if (continueEntry != null) ...[
+            header(LocaleKeys.continue_listening.tr()),
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              sliver: SliverToBoxAdapter(
+                child: ContinueListeningCard(
+                  entry: continueEntry,
+                  onTap: () => onHistoryTap(continueEntry),
+                ),
+              ),
+            ),
+          ],
+          if (recent.isNotEmpty) ...[
+            header(
+              LocaleKeys.recently_played.tr(),
+              trailing: TextButton(
+                onPressed: () => context.go('/library'),
+                child: Text(LocaleKeys.see_all.tr()),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: HomeCoverRow<PlaybackHistoryEntry>(
+                items: recent,
+                size: 112,
+                title: (entry) => entry.title,
+                subtitle: (entry) => entry.subtitle,
+                artwork: (entry) => entry.thumbnailUrl,
+                onTap: onHistoryTap,
+              ),
+            ),
+          ],
+          if (chart.isNotEmpty) ...[
+            header(chartTitle),
+            SliverToBoxAdapter(
+              child: HomeChartList(items: chart, onTap: onChartTap),
+            ),
+          ],
+          if (forYou.isNotEmpty) ...[
+            header(
+              LocaleKeys.category_for_you.tr(),
+              trailing: IconButton(
+                tooltip: LocaleKeys.retry.tr(),
+                onPressed: onRefresh,
+                icon: const Icon(Icons.refresh_rounded),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: HomeCoverRow<YouTubeSearchSuggestion>(
+                items: forYou,
+                size: 148,
+                title: (item) => item.displayText,
+                subtitle: (item) => item.channelTitle,
+                artwork: (item) => item.thumbnailUrl,
+                onTap: onForYouTap,
+              ),
+            ),
+          ],
+          header(LocaleKeys.explore_genres.tr()),
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 6),
-            sliver: SliverToBoxAdapter(child: const _DiscoverHeader()),
-          ),
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 0, 16),
+            padding: const EdgeInsets.fromLTRB(20, 0, 0, 120),
             sliver: SliverToBoxAdapter(
               child: _CategoryChips(onCategory: onCategory),
             ),
           ),
-          if (history.isNotEmpty)
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 18),
-              sliver: SliverToBoxAdapter(
-                child: _HistoryStrip(items: history, onTap: onHistoryTap),
-              ),
-            ),
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-            sliver: SliverToBoxAdapter(
-              child: _FeaturedCard(
-                suggestion: featured,
-                onTap: () => onTap(featured),
-              ),
-            ),
-          ),
-          if (rest.isNotEmpty)
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
-              sliver: SliverGrid(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 16,
-                  crossAxisSpacing: 16,
-                  childAspectRatio: 0.68,
-                ),
-                delegate: SliverChildBuilderDelegate((context, index) {
-                  final suggestion = rest[index];
-                  return _PlaylistCard(
-                    suggestion: suggestion,
-                    onTap: () => onTap(suggestion),
-                  );
-                }, childCount: rest.length),
-              ),
-            ),
         ],
       ),
     );
@@ -803,364 +833,6 @@ class _WebArtCard extends StatelessWidget {
             const SizedBox(height: 2),
             Text(
               subtitle!,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodySmall,
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _HistoryStrip extends StatelessWidget {
-  const _HistoryStrip({required this.items, required this.onTap});
-
-  final List<PlaybackHistoryEntry> items;
-  final ValueChanged<PlaybackHistoryEntry> onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                LocaleKeys.recently_played.tr(),
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-            TextButton(
-              onPressed: () => context.go('/library'),
-              style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                minimumSize: const Size(0, 0),
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-              child: Text(
-                LocaleKeys.see_all.tr(),
-                style: theme.textTheme.labelLarge?.copyWith(
-                  color: colors.primary,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        SizedBox(
-          height: 92,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: items.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 10),
-            itemBuilder: (context, index) {
-              final item = items[index];
-              final fallbackArtwork = ColoredBox(
-                color: colors.surfaceContainerHighest,
-                child: Center(
-                  child: Icon(
-                    item.kind == PlaybackHistoryKind.radio
-                        ? Icons.radio_rounded
-                        : Icons.music_note_rounded,
-                    color: colors.primary,
-                  ),
-                ),
-              );
-              return SizedBox(
-                width: 230,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(16),
-                  onTap: () => onTap(item),
-                  child: Ink(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      color: colors.surfaceContainerHigh,
-                      border: Border.all(color: colors.outlineVariant),
-                    ),
-                    child: Row(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: SizedBox.square(
-                            dimension: 56,
-                            child: item.thumbnailUrl.isEmpty
-                                ? fallbackArtwork
-                                : Image.network(
-                                    item.thumbnailUrl,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, _, _) => fallbackArtwork,
-                                  ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                item.title,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: theme.textTheme.titleSmall?.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              if (item.subtitle.isNotEmpty)
-                                Text(
-                                  item.subtitle,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: colors.onSurfaceVariant,
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// Card destacada para el primer resultado: ocupa todo el ancho con la
-/// imagen como fondo y un degradado sobre el cual se lee el titulo.
-class _FeaturedCard extends StatelessWidget {
-  const _FeaturedCard({required this.suggestion, required this.onTap});
-
-  final YouTubeSearchSuggestion suggestion;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
-    final image = suggestion.thumbnailUrl;
-
-    return InkWell(
-      borderRadius: BorderRadius.circular(28),
-      onTap: onTap,
-      child: AspectRatio(
-        aspectRatio: 16 / 9,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(28),
-              child: image.isNotEmpty
-                  ? Image.network(
-                      image,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) =>
-                          _GradientPlaceholder(colors: colors),
-                    )
-                  : _GradientPlaceholder(colors: colors),
-            ),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(28),
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.transparent,
-                      colors.scrim.withValues(alpha: 0.35),
-                      colors.scrim.withValues(alpha: 0.9),
-                    ],
-                    stops: const [0.15, 0.55, 1.0],
-                  ),
-                ),
-              ),
-            ),
-            Positioned(
-              left: 20,
-              right: 20,
-              bottom: 20,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(10),
-                            color: colors.primary,
-                          ),
-                          child: Text(
-                            LocaleKeys.featured.tr().toUpperCase(),
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: colors.onPrimary,
-                              letterSpacing: 1.2,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          suggestion.displayText,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.titleLarge?.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: -0.2,
-                            shadows: [
-                              Shadow(
-                                color: colors.scrim.withValues(alpha: 0.5),
-                                blurRadius: 8,
-                              ),
-                            ],
-                          ),
-                        ),
-                        if (suggestion.channelTitle.isNotEmpty) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            suggestion.channelTitle,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: Colors.white.withValues(alpha: 0.85),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Container(
-                    width: 56,
-                    height: 56,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: colors.primary,
-                      boxShadow: [
-                        BoxShadow(
-                          color: colors.primary.withValues(alpha: 0.45),
-                          blurRadius: 16,
-                          offset: const Offset(0, 6),
-                        ),
-                      ],
-                    ),
-                    child: Icon(
-                      Icons.play_arrow_rounded,
-                      color: colors.onPrimary,
-                      size: 32,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Card tipo "playlist": imagen cuadrada arriba con el boton de play encima,
-/// titulo y autor abajo.
-class _PlaylistCard extends StatelessWidget {
-  const _PlaylistCard({required this.suggestion, required this.onTap});
-
-  final YouTubeSearchSuggestion suggestion;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
-    final image = suggestion.thumbnailUrl;
-    final isDark = theme.brightness == Brightness.dark;
-
-    return InkWell(
-      borderRadius: BorderRadius.circular(20),
-      onTap: onTap,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          AspectRatio(
-            aspectRatio: 1,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
-                  child: image.isNotEmpty
-                      ? Image.network(
-                          image,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) =>
-                              _GradientPlaceholder(colors: colors),
-                        )
-                      : _GradientPlaceholder(colors: colors),
-                ),
-                Positioned(
-                  right: 10,
-                  bottom: 10,
-                  child: Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: colors.primary,
-                      boxShadow: [
-                        BoxShadow(
-                          color: colors.scrim.withValues(
-                            alpha: isDark ? 0.45 : 0.25,
-                          ),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Icon(
-                      Icons.play_arrow_rounded,
-                      color: colors.onPrimary,
-                      size: 26,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            suggestion.displayText,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w600,
-              height: 1.2,
-            ),
-          ),
-          if (suggestion.channelTitle.isNotEmpty) ...[
-            const SizedBox(height: 2),
-            Text(
-              suggestion.channelTitle,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.bodySmall,

@@ -12,6 +12,7 @@ import 'package:flow_music/features/song/presentation/controllers/song_controlle
 import 'package:flow_music/features/song/presentation/widgets/desktop_now_playing_bar.dart';
 import 'package:flow_music/features/song/presentation/widgets/track_change_transition.dart';
 import 'package:flow_music/shared/widgets/playing_bars_indicator.dart';
+import 'package:flow_music/shared/widgets/style_contour.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -201,8 +202,9 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
     // the dedicated radio player instead.
     final hasSong = ref.read(songController).currentVideoId != null;
     if (!hasSong) {
-      Navigator.of(context)
-          .push(MaterialPageRoute(builder: (_) => const RadioPlayerPage()));
+      Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => const RadioPlayerPage()));
       return;
     }
     ref
@@ -250,146 +252,154 @@ class _MiniPlayerBar extends StatelessWidget {
     // Card flotante del diseno StreamBeat (pantalla E): el mini player se
     // separa del borde con margen, esquinas redondeadas y sombra, flotando
     // sobre la barra de navegacion (que es quien gestiona el area segura).
+    // En Mola, lo que suena lleva sus contornos de tela alrededor.
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
-      child: Material(
-        color: colors.surfaceContainerHigh,
-        elevation: 10,
-        shadowColor: colors.scrim.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(18),
-        clipBehavior: Clip.antiAlias,
-        child: SizedBox(
-          height: 60,
-          child: InkWell(
-            onTap: onOpen,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (progress == null)
-                  Container(height: 2, color: colors.surfaceContainerHighest)
-                else
-                  LinearProgressIndicator(
-                    value: progress,
-                    minHeight: 2,
-                    backgroundColor: colors.surfaceContainerHighest,
-                    valueColor: AlwaysStoppedAnimation(colors.primary),
-                  ),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: Row(
-                      children: [
-                        // El relevo de cancion se desliza en vez de saltar,
-                        // igual que en el reproductor completo.
-                        TrackChangeTransition(
-                          trackKey: item.id,
-                          slide: 0.35,
-                          duration: const Duration(milliseconds: 320),
-                          child: _Artwork(
-                            artUri: item.artUri,
-                            color: colors.primary,
-                            isPlaying: isPlaying,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: TrackChangeTransition(
+      child: StyleContour(
+        radius: 18,
+        strokeWidth: 1.5,
+        gap: 2,
+        maxRings: 2,
+        child: Material(
+          color: colors.surfaceContainerHigh,
+          elevation: 10,
+          shadowColor: colors.scrim.withValues(alpha: 0.3),
+          borderRadius: BorderRadius.circular(18),
+          clipBehavior: Clip.antiAlias,
+          child: SizedBox(
+            height: 60,
+            child: InkWell(
+              onTap: onOpen,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (progress == null)
+                    Container(height: 2, color: colors.surfaceContainerHighest)
+                  else
+                    LinearProgressIndicator(
+                      value: progress,
+                      minHeight: 2,
+                      backgroundColor: colors.surfaceContainerHighest,
+                      valueColor: AlwaysStoppedAnimation(colors.primary),
+                    ),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: Row(
+                        children: [
+                          // El relevo de cancion se desliza en vez de saltar,
+                          // igual que en el reproductor completo.
+                          TrackChangeTransition(
                             trackKey: item.id,
-                            alignment: Alignment.centerLeft,
-                            slide: 0.12,
-                            scaleFrom: 0.98,
+                            slide: 0.35,
                             duration: const Duration(milliseconds: 320),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  item.title,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: theme.textTheme.titleSmall?.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                if (item.artist != null &&
-                                    item.artist!.isNotEmpty)
+                            child: _Artwork(
+                              artUri: item.artUri,
+                              color: colors.primary,
+                              isPlaying: isPlaying,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: TrackChangeTransition(
+                              trackKey: item.id,
+                              alignment: Alignment.centerLeft,
+                              slide: 0.12,
+                              scaleFrom: 0.98,
+                              duration: const Duration(milliseconds: 320),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
                                   Text(
-                                    item.artist!,
+                                    item.title,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      color: colors.onSurfaceVariant,
+                                    style: theme.textTheme.titleSmall?.copyWith(
+                                      fontWeight: FontWeight.w700,
                                     ),
                                   ),
+                                  if (item.artist != null &&
+                                      item.artist!.isNotEmpty)
+                                    Text(
+                                      item.artist!,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: theme.textTheme.bodySmall
+                                          ?.copyWith(
+                                            color: colors.onSurfaceVariant,
+                                          ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          _MiniTransportButton(
+                            tooltip: 'Previous',
+                            icon: Icons.skip_previous_rounded,
+                            onPressed: onPrevious,
+                          ),
+                          Container(
+                            width: 42,
+                            height: 42,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: colors.primary,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: colors.primary.withValues(alpha: 0.4),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 4),
+                                ),
                               ],
                             ),
-                          ),
-                        ),
-                        _MiniTransportButton(
-                          tooltip: 'Previous',
-                          icon: Icons.skip_previous_rounded,
-                          onPressed: onPrevious,
-                        ),
-                        Container(
-                          width: 42,
-                          height: 42,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: colors.primary,
-                            boxShadow: [
-                              BoxShadow(
-                                color: colors.primary.withValues(alpha: 0.4),
-                                blurRadius: 12,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: IconButton(
-                            padding: EdgeInsets.zero,
-                            tooltip: isPlaying ? 'Pause' : 'Play',
-                            icon: isBuffering
-                                ? const SizedBox.square(
-                                    dimension: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2.4,
+                            child: IconButton(
+                              padding: EdgeInsets.zero,
+                              tooltip: isPlaying ? 'Pause' : 'Play',
+                              icon: isBuffering
+                                  ? const SizedBox.square(
+                                      dimension: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2.4,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : Icon(
+                                      isPlaying
+                                          ? Icons.pause_rounded
+                                          : Icons.play_arrow_rounded,
                                       color: Colors.white,
+                                      size: 26,
                                     ),
-                                  )
-                                : Icon(
-                                    isPlaying
-                                        ? Icons.pause_rounded
-                                        : Icons.play_arrow_rounded,
-                                    color: Colors.white,
-                                    size: 26,
-                                  ),
-                            onPressed: isBuffering ? null : onToggle,
-                          ),
-                        ),
-                        _MiniTransportButton(
-                          tooltip: 'Next',
-                          icon: Icons.skip_next_rounded,
-                          onPressed: onNext,
-                        ),
-                        SizedBox(
-                          width: 36,
-                          height: 40,
-                          child: IconButton(
-                            padding: EdgeInsets.zero,
-                            tooltip: 'Stop',
-                            icon: Icon(
-                              Icons.close_rounded,
-                              size: 22,
-                              color: colors.onSurfaceVariant,
+                              onPressed: isBuffering ? null : onToggle,
                             ),
-                            onPressed: onStop,
                           ),
-                        ),
-                      ],
+                          _MiniTransportButton(
+                            tooltip: 'Next',
+                            icon: Icons.skip_next_rounded,
+                            onPressed: onNext,
+                          ),
+                          SizedBox(
+                            width: 36,
+                            height: 40,
+                            child: IconButton(
+                              padding: EdgeInsets.zero,
+                              tooltip: 'Stop',
+                              icon: Icon(
+                                Icons.close_rounded,
+                                size: 22,
+                                color: colors.onSurfaceVariant,
+                              ),
+                              onPressed: onStop,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

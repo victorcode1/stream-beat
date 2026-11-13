@@ -55,14 +55,29 @@ List<AppleTopSong> _chartSongs(int count) => List.generate(
 HomeSuggestionsRepository _repository({
   int chartSize = 10,
   HomeMixLoader? mixLoader,
+  HomeChartLoader? chartLoader,
 }) {
   return HomeSuggestionsRepository(
     locationService: const _FakeLocationService(),
     appleService: _FakeChartsService(_chartSongs(chartSize)),
     searchLoader: _fakeSearch,
     mixLoader: mixLoader ?? (_) async => MixPlaylistPage.empty,
+    // Por defecto YouTube Music no responde, asi se prueba el respaldo de
+    // Apple; las pruebas del camino nuevo pasan su propia lista.
+    chartLoader: chartLoader ?? (_) async => const [],
   );
 }
+
+List<YouTubeSearchSuggestion> _musicChart(int count) => List.generate(
+  count,
+  (index) => YouTubeSearchSuggestion(
+    videoId: 'ytm-$index',
+    displayText: 'Hit $index',
+    channelTitle: 'Artist $index',
+    thumbnailUrl: '',
+  ),
+  growable: false,
+);
 
 void main() {
   test('each refresh shows a different slice of the country chart', () async {
@@ -170,5 +185,42 @@ void main() {
 
     final ids = batch.suggestions.map((song) => song.videoId).toList();
     expect(ids.where((id) => id == 'chart-top0'), hasLength(1));
+  });
+
+  test('the YouTube Music chart is used first, in its own order', () async {
+    final requestedCountries = <String>[];
+    final repository = _repository(
+      chartLoader: (country) async {
+        requestedCountries.add(country);
+        return _musicChart(5);
+      },
+    );
+
+    final result = await repository.load();
+
+    expect(requestedCountries, ['CO']);
+    expect(result.chart.map((song) => song.videoId), [
+      'ytm-0',
+      'ytm-1',
+      'ytm-2',
+      'ytm-3',
+      'ytm-4',
+    ]);
+    expect(result.suggestions.first.videoId, 'ytm-0');
+    // Con YouTube Music respondiendo no se busca cancion por cancion.
+    expect(
+      result.suggestions.any((song) => song.videoId.startsWith('chart-')),
+      isFalse,
+    );
+  });
+
+  test('the Apple chart is the fallback when YouTube Music fails', () async {
+    final repository = _repository(
+      chartLoader: (_) async => throw Exception('sin red'),
+    );
+
+    final result = await repository.load();
+
+    expect(result.chart.first.videoId, 'chart-top0');
   });
 }

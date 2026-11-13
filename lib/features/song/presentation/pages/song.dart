@@ -12,6 +12,7 @@ import 'package:flow_music/features/settings/presentation/controllers/default_pl
 import 'package:flow_music/features/song/presentation/controllers/repeat_mode_controller.dart';
 import 'package:flow_music/features/song/presentation/controllers/song_controller.dart';
 import 'package:flow_music/features/song/presentation/controllers/song_page_controller.dart';
+import 'package:flow_music/features/song/presentation/widgets/modern_player_hero.dart';
 import 'package:flow_music/features/song/presentation/widgets/modern_player_widget.dart';
 import 'package:flow_music/features/song/presentation/widgets/share_song_sheet.dart';
 import 'package:flutter/material.dart';
@@ -135,7 +136,7 @@ class _ScreenPlayState extends ConsumerState<ScreenPlay>
 
     final theme = Theme.of(context);
     final isDesktop = useFlowDesktopShell(context);
-    return Scaffold(
+    final page = Scaffold(
       backgroundColor: Colors.transparent,
       // Igual al mockup: el reproductor inmersivo no lleva toggle Audio/Video
       // arriba (el chip "Video" del pie cubre el cambio de modo). En el shell la
@@ -238,6 +239,21 @@ class _ScreenPlayState extends ConsumerState<ScreenPlay>
                   showNowPlayingQueueSheet(context: context, ref: ref),
               onShare: () => showShareSongSheet(context: context, ref: ref),
             ),
+        ],
+      ),
+    );
+
+    if (isDesktop) return page;
+    // En movil la pantalla toma el color de la cancion: la caratula
+    // desenfocada cubre todo el fondo, incluidos los accesos del pie, y el
+    // texto pasa a claro para leerse encima.
+    return Theme(
+      data: playerOnDarkTheme(theme),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          PlayerAmbientBackground(thumbnailUrl: controller.displayThumbnailUrl),
+          page,
         ],
       ),
     );

@@ -9,7 +9,9 @@ import 'package:video_player/video_player.dart';
 
 import '../controllers/modern_player_view_controller.dart';
 import '../controllers/modern_player_view_state.dart';
+import 'modern_player_artwork.dart';
 import 'modern_player_controls.dart';
+import 'modern_player_hero.dart';
 import 'modern_player_media_display.dart';
 import 'modern_player_wide_layout.dart';
 
@@ -237,6 +239,47 @@ class _ModernPlayerWidgetState extends State<ModernPlayerWidget> {
             sourceLabel: widget.sourceLabel,
             trackKey: trackKey,
             forward: _forward,
+          );
+        }
+
+        // En movil, sin video, la caratula ocupa la parte de arriba de borde a
+        // borde y se funde con el fondo ambiental que pinta la pagina, como
+        // en Shazam. El video y el embed web conservan su presentacion.
+        final showsHero =
+            !usesWebEmbed &&
+            !showColdLoader &&
+            !(widget.videoController?.value.isInitialized ?? false);
+        if (showsHero) {
+          return Column(
+            key: const ValueKey('modern-player-hero'),
+            children: [
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (context, constraints) => Align(
+                    alignment: Alignment.topCenter,
+                    child: SizedBox(
+                      width: constraints.maxWidth,
+                      height: constraints.maxHeight.clamp(
+                        0.0,
+                        constraints.maxWidth * 1.05,
+                      ),
+                      child: ModernPlayerHero(
+                        thumbnailUrl: widget.thumbnailUrl,
+                        trackKey: trackKey,
+                        forward: _forward,
+                        isBusy: isBusy,
+                        placeholder: ModernPlayerArtwork(
+                          theme: theme,
+                          borderRadius: 0,
+                          elevated: false,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              controls,
+            ],
           );
         }
 
