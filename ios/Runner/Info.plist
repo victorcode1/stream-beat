@@ -2,12 +2,14 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>StreamBeat</string>
+	<string>StreamBeat Music</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -15,7 +17,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>StreamBeat</string>
+	<string>StreamBeat Music</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -23,8 +25,7 @@
 			<string>Editor</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>com.victorflores.streambeat</string>
-				<string>streambeat</string>
+				<string>com.victorflores.streambeatmusic</string>
 			</array>
 		</dict>
 	</array>
@@ -39,20 +40,14 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>GADApplicationIdentifier</key>
-	<string>ca-app-pub-7471220027528882~2622781522</string>
-	<key>ITSAppUsesNonExemptEncryption</key>
-	<false/>
+	<string>ca-app-pub-3940256099942544~1458002511</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>StreamBeat usa tu ubicación solo mientras la app está abierta para sugerirte emisoras de tu país.</string>
-	<key>NSUserTrackingUsageDescription</key>
-	<string>Tu permiso permite usar el identificador del dispositivo para personalizar anuncios y medir su rendimiento. Puedes rechazarlo y seguir escuchando radio.</string>
-	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>StreamBeat usa tu ubicación para mostrar emisoras cercanas y sugerirte contenido de tu país.</string>
+	<string>StreamBeat usa tu ubicacion solo para sugerirte musica popular en tu pais.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
