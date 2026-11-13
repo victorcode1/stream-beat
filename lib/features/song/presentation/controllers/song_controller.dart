@@ -42,6 +42,16 @@ enum PlaybackMode { audio, video }
 
 const _pipedApiBaseUrl = 'https://api.piped.private.coffee';
 
+/// Los streams solo de audio de googlevideo responden 403 a rangos de mas de
+/// ~1 MB, y los reproductores nativos (AVPlayer, MediaPlayer) piden el archivo
+/// entero. El stream combinado (itag 18) acepta rangos abiertos, asi que las
+/// apps nativas lo prefieren; la web usa el reproductor embebido.
+bool get _prefersMuxedStream =>
+    !kIsWeb &&
+    (defaultTargetPlatform == TargetPlatform.iOS ||
+        defaultTargetPlatform == TargetPlatform.macOS ||
+        defaultTargetPlatform == TargetPlatform.android);
+
 bool get _isApplePlatform =>
     !kIsWeb &&
     (defaultTargetPlatform == TargetPlatform.iOS ||
@@ -254,6 +264,7 @@ class SongController extends ChangeNotifier {
 
   String? get downloadedFilePath => _currentDownloadedAudio?.filePath;
   DownloadedAudio? get currentDownloadedMedia => _currentDownloadedMedia;
+  DownloadedAudio? get currentDownloadedAudio => _currentDownloadedAudio;
   DownloadedAudio? get currentOfflineAudio => _currentOfflineAudio;
   bool get hasDownloadedCurrentAudio => _currentDownloadedAudio != null;
   bool get hasDownloadedCurrentVideo => _currentDownloadedVideo != null;
@@ -296,7 +307,15 @@ class SongController extends ChangeNotifier {
 
   SongController({required this.ref});
 
-  int _beginPlaybackRequest() => ++_playbackGeneration;
+  int _beginPlaybackRequest() {
+    _playbackFailed = false;
+    return ++_playbackGeneration;
+  }
+
+  /// La ultima peticion de reproduccion termino en error y no sono nada.
+  /// El autoplay lo usa para saltar a la siguiente cancion.
+  bool get playbackFailed => _playbackFailed;
+  bool _playbackFailed = false;
 
   bool _isCurrentPlaybackRequest(int generation) {
     return generation == _playbackGeneration;
@@ -541,17 +560,24 @@ class SongController extends ChangeNotifier {
         // Metadatos y manifiesto en paralelo con el cliente compartido: en
         // serie y con un cliente nuevo tardaban unos 3 s antes de sonar.
         final yt = sharedYoutubeExplode;
-        final videoInfoFuture = yt.videos.get(videoId);
-        final manifestFuture = yt.videos.streamsClient.getManifest(videoId);
-        // Evita un error no atendido si el manifiesto falla antes.
-        unawaited(videoInfoFuture.then((_) {}, onError: (Object _) {}));
-        final manifest = await manifestFuture;
+        // Los metadatos son opcionales: YouTube a veces responde la pagina
+        // del video como "no disponible" aunque el audio si se pueda sacar.
+        final videoInfoFuture = yt.videos
+            .get(videoId)
+            .then<Video?>(
+              (video) => video,
+              onError: (Object error) {
+                debugPrint('YouTube metadata failed for $videoId: $error');
+                return null;
+              },
+            );
+        final manifest = await yt.videos.streamsClient.getManifest(videoId);
         final videoInfo = await videoInfoFuture;
         if (!_isCurrentPlaybackRequest(generation)) return;
         _videoInfo = videoInfo;
         final playbackStream = pickYoutubePlaybackStream(
           manifest,
-          preferMuxed: _isApplePlatform,
+          preferMuxed: _prefersMuxedStream,
         );
         if (playbackStream == null) {
           throw StateError('No audio streams available for video: $videoId');
@@ -609,6 +635,7 @@ class SongController extends ChangeNotifier {
       if (!_isCurrentPlaybackRequest(generation)) return;
       debugPrint('Error playing YouTube audio: $e');
       debugPrint('Stack trace: $stackTrace');
+      _playbackFailed = true;
       _isLoading = false;
       notifyListeners();
     }

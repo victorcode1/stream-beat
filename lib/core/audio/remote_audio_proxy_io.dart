@@ -5,6 +5,9 @@ import 'package:flutter/foundation.dart';
 
 final RemoteAudioProxy remoteAudioProxy = RemoteAudioProxy();
 
+/// Renueva las conexiones salientes tras volver de segundo plano.
+void refreshRemoteAudioConnections() => remoteAudioProxy.refreshConnections();
+
 Future<String> prepareRemoteAudioUrl({
   required String url,
   Map<String, String> requestHeaders = const {},
@@ -72,19 +75,55 @@ class RemoteAudioProxy {
     ).toString();
   }
 
+  /// Deja que las conexiones con googlevideo en curso terminen, pero las
+  /// peticiones nuevas abren conexiones frescas. Mientras la app estuvo
+  /// suspendida, las conexiones guardadas pudieron cerrarse por el otro lado y
+  /// reutilizarlas hacia fallar la siguiente cancion.
+  void refreshConnections() {
+    _client?.close();
+    _client = null;
+  }
+
   Future<HttpServer> _ensureServer() async {
     final existing = _server;
-    if (existing != null) return existing;
+    if (existing != null && await _isListening(existing)) return existing;
+    if (existing != null) {
+      debugPrint('Remote audio proxy socket was reclaimed; rebinding');
+      _server = null;
+      unawaited(existing.close(force: true).catchError((Object _) {}));
+    }
 
     final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
     server.autoCompress = false;
     _server = server;
     unawaited(
-      server.forEach(_handleRequest).catchError((Object error, StackTrace _) {
-        debugPrint('Remote audio proxy stopped: $error');
-      }),
+      server
+          .forEach(_handleRequest)
+          .catchError((Object error, StackTrace _) {
+            debugPrint('Remote audio proxy stopped: $error');
+          })
+          .whenComplete(() {
+            if (identical(_server, server)) _server = null;
+          }),
     );
     return server;
+  }
+
+  /// iOS cierra los sockets que escuchan cuando suspende la app (TN2277), sin
+  /// avisar al `HttpServer`. Una conexion local de prueba detecta ese caso
+  /// antes de entregar a AVPlayer una URL que nunca responderia.
+  Future<bool> _isListening(HttpServer server) async {
+    try {
+      final socket = await Socket.connect(
+        InternetAddress.loopbackIPv4,
+        server.port,
+        timeout: const Duration(milliseconds: 500),
+      );
+      socket.destroy();
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<void> _handleRequest(HttpRequest localRequest) async {

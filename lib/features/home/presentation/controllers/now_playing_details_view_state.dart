@@ -64,13 +64,8 @@ class NowPlayingDetailsViewState {
       isLoading: isLoading || isDownloading || isSavingOffline,
       isFavorite: isFavorite,
       transferStatus: transferStatus,
+      // El modo audio/video ya se ve en el boton de video de la barra.
       statusItems: [
-        NowPlayingStatusItem(
-          icon: item.isVideo
-              ? Icons.videocam_rounded
-              : Icons.music_note_rounded,
-          label: item.isVideo ? LocaleKeys.video.tr() : LocaleKeys.audio.tr(),
-        ),
         if (isOfflineSaved)
           NowPlayingStatusItem(
             icon: Icons.offline_pin_rounded,

@@ -170,81 +170,11 @@ class _NowPlayingDetailsBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
-
     return Row(
       children: [
-        Expanded(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              if (state.transferStatus != null) ...[
-                Row(
-                  children: [
-                    Icon(
-                      state.transferStatus!.icon,
-                      size: 13,
-                      color: colors.primary,
-                    ),
-                    const SizedBox(width: 5),
-                    Expanded(
-                      child: Text(
-                        state.transferStatus!.label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: colors.primary,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 2),
-              ],
-              // El titulo de la cancion vive ahora en el cuerpo del reproductor
-              // (diseno StreamBeat, pantalla D), asi que el app bar solo rotula
-              // "REPRODUCIENDO" para no duplicarlo.
-              Text(
-                LocaleKeys.playing.tr().toUpperCase(),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.labelMedium?.copyWith(
-                  color: colors.onSurfaceVariant,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1.5,
-                ),
-              ),
-              if (state.statusItems.isNotEmpty ||
-                  state.transferStatus != null) ...[
-                const SizedBox(height: 4),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    for (final status in state.statusItems) ...[
-                      Icon(status.icon, size: 14, color: colors.primary),
-                      const SizedBox(width: 4),
-                      if (status != state.statusItems.last)
-                        const SizedBox(width: 10),
-                    ],
-                    if (state.transferStatus != null) ...[
-                      if (state.statusItems.isNotEmpty)
-                        _NowPlayingDividerDot(color: colors.primary),
-                      Icon(
-                        state.transferStatus!.icon,
-                        size: 14,
-                        color: colors.primary,
-                      ),
-                    ],
-                  ],
-                ),
-              ],
-            ],
-          ),
-        ),
+        // Una sola linea, para que el rotulo quede a la altura de los botones.
+        // Durante una descarga, el rotulo muestra su progreso.
+        Expanded(child: _NowPlayingHeading(state: state)),
         // Accesos rapidos que antes iban en chips al pie del reproductor:
         // en la barra liberan espacio para la caratula.
         _NowPlayingBarAction(
@@ -271,6 +201,43 @@ class _NowPlayingDetailsBar extends StatelessWidget {
   }
 }
 
+class _NowPlayingHeading extends StatelessWidget {
+  final NowPlayingDetailsViewState state;
+
+  const _NowPlayingHeading({required this.state});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final transfer = state.transferStatus;
+    final label = transfer?.label ?? LocaleKeys.playing.tr().toUpperCase();
+    final color = transfer == null ? colors.onSurfaceVariant : colors.primary;
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        for (final status in [?transfer, ...state.statusItems]) ...[
+          Icon(status.icon, size: 14, color: colors.primary),
+          const SizedBox(width: 6),
+        ],
+        Flexible(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w800,
+              letterSpacing: transfer == null ? 1.5 : 0.4,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _NowPlayingBarAction extends StatelessWidget {
   const _NowPlayingBarAction({
     required this.icon,
@@ -292,25 +259,6 @@ class _NowPlayingBarAction extends StatelessWidget {
       onPressed: onPressed,
       visualDensity: VisualDensity.compact,
       icon: Icon(icon, color: selected ? colors.primary : colors.onSurface),
-    );
-  }
-}
-
-class _NowPlayingDividerDot extends StatelessWidget {
-  final Color color;
-
-  const _NowPlayingDividerDot({required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 3,
-      height: 3,
-      margin: const EdgeInsets.symmetric(horizontal: 8),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.6),
-        shape: BoxShape.circle,
-      ),
     );
   }
 }

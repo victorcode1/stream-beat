@@ -2,11 +2,14 @@ import 'dart:async';
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flow_music/core/audio/background_audio_handler.dart';
+import 'package:flow_music/core/audio/remote_audio_proxy_stub.dart'
+    if (dart.library.io) 'package:flow_music/core/audio/remote_audio_proxy_io.dart';
 import 'package:flow_music/core/routes/app_navigator_key.dart';
 import 'package:flow_music/core/utils/locale_keys.g.dart';
 import 'package:flow_music/core/utils/main_controller.dart';
 import 'package:flow_music/features/autoplay/data/audio_cache_stub.dart'
     if (dart.library.io) 'package:flow_music/features/autoplay/data/audio_cache_io.dart';
+import 'package:flow_music/features/autoplay/data/shared_youtube_client.dart';
 import 'package:flow_music/features/autoplay/presentation/controllers/autoplay_queue_controller.dart';
 import 'package:flow_music/features/autoplay/presentation/controllers/cache_status_controller.dart';
 import 'package:flow_music/features/home/data/location_service.dart';
@@ -27,6 +30,7 @@ class MainAppController {
 
   final Ref ref;
   DateTime? _lastLocationPromptAt;
+  bool _wasInBackground = false;
   late final MonetizationCoordinator _monetizationCoordinator = ref.read(
     monetizationCoordinatorProvider,
   );
@@ -104,6 +108,10 @@ class MainAppController {
         ref.read(mainController).setAudioStateDetached();
         unawaited(clearAudioCache());
       case AppLifecycleState.resumed:
+        if (_wasInBackground) {
+          _wasInBackground = false;
+          _refreshNetworkConnections();
+        }
         ref.read(mainController).setAudioStateResumed();
         unawaited(_promptCountryLocationAccessIfNeeded());
         break;
@@ -111,12 +119,21 @@ class MainAppController {
         ref.read(mainController).setAudioStateInactive();
         break;
       case AppLifecycleState.paused:
+        _wasInBackground = true;
         ref.read(mainController).setAudioStatePaused();
         break;
       case AppLifecycleState.hidden:
         ref.read(mainController).setAudioStateHidden();
         break;
     }
+  }
+
+  /// Al volver de segundo plano, las conexiones guardadas con YouTube y
+  /// googlevideo pueden estar cortadas; reutilizarlas hacia que la siguiente
+  /// cancion no sonara.
+  void _refreshNetworkConnections() {
+    refreshSharedYoutubeExplode();
+    refreshRemoteAudioConnections();
   }
 
   void handleCacheStatusChanged(CacheStatus? previous, CacheStatus next) {
@@ -126,9 +143,27 @@ class MainAppController {
     });
   }
 
+  /// Canciones seguidas que se pueden saltar si no suenan, antes de rendirse.
+  static const _maxSkippedTracks = 3;
+
   Future<void> _playQueueTrack(NextTrack? next, {PlaybackMode? mode}) async {
-    if (next == null) return;
     final controller = ref.read(songController);
+    final queue = ref.read(autoplayQueueControllerProvider.notifier);
+    var track = next;
+    for (var attempt = 0; track != null; attempt++) {
+      await _playTrack(controller, track, mode: mode);
+      // Una cancion que YouTube no entrega no debe detener el autoplay.
+      if (!controller.playbackFailed || attempt >= _maxSkippedTracks) return;
+      debugPrint('Skipping ${track.suggestion.videoId}: playback failed');
+      track = await queue.playNext();
+    }
+  }
+
+  Future<void> _playTrack(
+    SongController controller,
+    NextTrack next, {
+    PlaybackMode? mode,
+  }) async {
     if ((mode ?? controller.currentMode) == PlaybackMode.video) {
       await controller.playVideo(id: next.suggestion.videoId);
       return;

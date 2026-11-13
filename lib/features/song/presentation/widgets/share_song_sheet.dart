@@ -1,6 +1,9 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flow_music/core/utils/locale_keys.g.dart';
 import 'package:flow_music/features/library/presentation/widgets/downloaded_file_actions.dart';
+import 'package:flow_music/features/library/data/downloaded_audio.dart';
+import 'package:flow_music/features/song/presentation/controllers/audio_download_writer_stub.dart'
+    if (dart.library.io) 'package:flow_music/features/song/presentation/controllers/audio_download_writer_io.dart';
 import 'package:flow_music/features/song/presentation/controllers/song_controller.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -30,10 +33,11 @@ Future<void> showShareSongSheet({
 
   final title = controller.displayTitle ?? '';
   final author = controller.displayAuthor ?? '';
-  // El archivo local puede venir de "guardar offline" o de una descarga.
+  // El archivo local puede venir de "guardar offline" o de una descarga de
+  // audio; en modo video tambien sirve la copia de audio ya descargada.
   final localAudio =
-      controller.currentOfflineAudio ?? controller.currentDownloadedMedia;
-  final shareableFile = kIsWeb || localAudio == null || localAudio.isVideo
+      controller.currentOfflineAudio ?? controller.currentDownloadedAudio;
+  final shareableFile = localAudio == null || localAudio.isVideo
       ? null
       : localAudio;
 
@@ -95,26 +99,14 @@ Future<void> showShareSongSheet({
                   );
                 },
               ),
-              ListTile(
-                enabled: shareableFile != null,
-                leading: const Icon(Icons.audio_file_rounded),
-                title: Text(LocaleKeys.share_audio_file.tr()),
-                subtitle: shareableFile == null
-                    ? Text(
-                        kIsWeb
-                            ? LocaleKeys.share_unavailable.tr()
-                            : LocaleKeys.share_audio_needs_download.tr(),
-                      )
-                    : null,
-                onTap: shareableFile == null
-                    ? null
-                    : () async {
-                        Navigator.of(sheetContext).pop();
-                        await shareDownloadedFile(
-                          context: context,
-                          audio: shareableFile,
-                        );
-                      },
+              _ShareAudioFileTile(
+                videoId: videoId,
+                localAudio: shareableFile,
+                onReady: (audio) async {
+                  if (sheetContext.mounted) Navigator.of(sheetContext).pop();
+                  if (!context.mounted) return;
+                  await shareDownloadedFile(context: context, audio: audio);
+                },
               ),
               const SizedBox(height: 8),
             ],
@@ -123,6 +115,91 @@ Future<void> showShareSongSheet({
       );
     },
   );
+}
+
+/// Opcion "Compartir archivo de audio". Si la cancion no esta en el
+/// dispositivo, la descarga primero mostrando el progreso y, al terminar,
+/// entrega el archivo a [onReady] para abrir la hoja de compartir.
+class _ShareAudioFileTile extends ConsumerStatefulWidget {
+  const _ShareAudioFileTile({
+    required this.videoId,
+    required this.localAudio,
+    required this.onReady,
+  });
+
+  final String videoId;
+  final DownloadedAudio? localAudio;
+  final Future<void> Function(DownloadedAudio audio) onReady;
+
+  @override
+  ConsumerState<_ShareAudioFileTile> createState() =>
+      _ShareAudioFileTileState();
+}
+
+class _ShareAudioFileTileState extends ConsumerState<_ShareAudioFileTile> {
+  bool _downloading = false;
+
+  Future<void> _shareOrDownload() async {
+    final ready = widget.localAudio;
+    if (ready != null) return widget.onReady(ready);
+
+    final controller = ref.read(songController);
+    if (controller.isDownloading) {
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        SnackBar(content: Text(LocaleKeys.share_audio_download_busy.tr())),
+      );
+      return;
+    }
+
+    setState(() => _downloading = true);
+    final path = await controller.downloadAudio(id: widget.videoId);
+    final audio = path == null
+        ? null
+        : await getDownloadedAudio(widget.videoId);
+    if (mounted) setState(() => _downloading = false);
+    // Aunque el usuario haya cerrado la hoja, la descarga sigue y al
+    // terminar se abre igual la opcion de compartir.
+    if (audio != null) await widget.onReady(audio);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = ref.watch(
+      songController.select((c) => c.downloadProgress),
+    );
+
+    return ListTile(
+      enabled: !kIsWeb && !_downloading,
+      leading: _downloading
+          ? const SizedBox.square(
+              dimension: 24,
+              child: CircularProgressIndicator(strokeWidth: 2.5),
+            )
+          : const Icon(Icons.audio_file_rounded),
+      title: Text(LocaleKeys.share_audio_file.tr()),
+      subtitle: _subtitle(progress),
+      onTap: kIsWeb ? null : _shareOrDownload,
+    );
+  }
+
+  Widget? _subtitle(double progress) {
+    if (kIsWeb) return Text(LocaleKeys.share_unavailable.tr());
+    if (_downloading) {
+      final percent = (progress * 100).clamp(0, 100).round();
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(LocaleKeys.downloading_progress.tr(args: ['$percent'])),
+          const SizedBox(height: 6),
+          LinearProgressIndicator(value: progress > 0 ? progress : null),
+        ],
+      );
+    }
+    if (widget.localAudio == null) {
+      return Text(LocaleKeys.share_audio_needs_download.tr());
+    }
+    return null;
+  }
 }
 
 /// Comparte el enlace de YouTube de [videoId] por la hoja del sistema.

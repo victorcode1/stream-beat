@@ -4,6 +4,7 @@ import 'package:audio_service/audio_service.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 
+import 'background_time.dart';
 import 'remote_audio_proxy_stub.dart'
     if (dart.library.io) 'remote_audio_proxy_io.dart';
 
@@ -300,7 +301,9 @@ class FlowAudioHandler extends BaseAudioHandler with SeekHandler {
     unawaited(_runFade(from: 0, to: 1, total: _fadeInDuration));
   }
 
-  Future<void> _handleCompletion() async {
+  Future<void> _handleCompletion() => withBackgroundTime(_completeAndAdvance);
+
+  Future<void> _completeAndAdvance() async {
     final generation = _sourceGeneration;
     // Detenemos audioplayers explicitamente para que no siga reproduciendo
     // padding/silencio detras del fin canonico cuando autoplay esta
@@ -315,9 +318,15 @@ class FlowAudioHandler extends BaseAudioHandler with SeekHandler {
         updatePosition: _position,
       ),
     );
+    // Se espera al hook para que la tarea en segundo plano dure hasta que la
+    // siguiente cancion haya empezado a sonar.
     final hook = onTrackComplete;
     if (hook != null) {
-      unawaited(hook());
+      try {
+        await hook();
+      } catch (error, stack) {
+        debugPrint('Track complete hook failed: $error\n$stack');
+      }
     }
   }
 
@@ -429,14 +438,14 @@ class FlowAudioHandler extends BaseAudioHandler with SeekHandler {
   Future<void> skipToNext() async {
     final hook = onSkipToNext;
     if (hook == null) return;
-    await hook();
+    await withBackgroundTime(hook);
   }
 
   @override
   Future<void> skipToPrevious() async {
     final hook = onSkipToPrevious;
     if (hook != null) {
-      await hook();
+      await withBackgroundTime(hook);
       return;
     }
     await seek(Duration.zero);

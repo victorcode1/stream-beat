@@ -60,7 +60,7 @@ Future<ResolvedAudio?> _resolveViaYoutubeExplode(
   );
   final playbackStream = pickYoutubePlaybackStream(
     manifest,
-    preferMuxed: _isApplePlatform,
+    preferMuxed: _prefersMuxedStream,
   );
   if (playbackStream == null) return null;
 
@@ -80,6 +80,16 @@ Future<ResolvedAudio?> _resolveViaYoutubeExplode(
     ),
   );
 }
+
+/// Los streams solo de audio de googlevideo responden 403 a rangos de mas de
+/// ~1 MB, y los reproductores nativos (AVPlayer, MediaPlayer) piden el archivo
+/// entero. El stream combinado (itag 18) acepta rangos abiertos, asi que las
+/// apps nativas lo prefieren; la web usa el reproductor embebido.
+bool get _prefersMuxedStream =>
+    !kIsWeb &&
+    (defaultTargetPlatform == TargetPlatform.iOS ||
+        defaultTargetPlatform == TargetPlatform.macOS ||
+        defaultTargetPlatform == TargetPlatform.android);
 
 bool get _isApplePlatform =>
     !kIsWeb &&

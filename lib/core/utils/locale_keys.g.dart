@@ -234,6 +234,7 @@ abstract class LocaleKeys {
   static const share_youtube_link = 'share_youtube_link';
   static const share_audio_file = 'share_audio_file';
   static const share_audio_needs_download = 'share_audio_needs_download';
+  static const share_audio_download_busy = 'share_audio_download_busy';
   static const copy_link = 'copy_link';
   static const link_copied = 'link_copied';
   static const view_file_location = 'view_file_location';
