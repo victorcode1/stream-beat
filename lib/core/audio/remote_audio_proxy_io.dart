@@ -43,6 +43,7 @@ class RemoteAudioProxy {
     ..idleTimeout = const Duration(seconds: 30)
     ..maxConnectionsPerHost = 6;
   int _nextSourceId = 0;
+  static const _maxSources = 4;
   final Map<String, _RemoteAudioSource> _sources = {};
 
   Future<String> register({
@@ -56,15 +57,18 @@ class RemoteAudioProxy {
 
     final server = await _ensureServer();
     final token = '${DateTime.now().microsecondsSinceEpoch}-${_nextSourceId++}';
-    _sources
-      ..clear()
-      ..[token] = _RemoteAudioSource(
-        uri: remoteUri,
-        requestHeaders: Map.unmodifiable(requestHeaders),
-        contentLength:
-            contentLength ??
-            int.tryParse(remoteUri.queryParameters['clen'] ?? ''),
-      );
+    // La cancion actual y la siguiente de la cola nativa conviven: registrar
+    // la siguiente no debe invalidar la que esta sonando.
+    while (_sources.length >= _maxSources) {
+      _sources.remove(_sources.keys.first);
+    }
+    _sources[token] = _RemoteAudioSource(
+      uri: remoteUri,
+      requestHeaders: Map.unmodifiable(requestHeaders),
+      contentLength:
+          contentLength ??
+          int.tryParse(remoteUri.queryParameters['clen'] ?? ''),
+    );
 
     final extension = _extensionForMimeType(mimeType);
     return Uri(

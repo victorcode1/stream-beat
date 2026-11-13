@@ -13,6 +13,7 @@ import 'package:flow_music/features/autoplay/data/shared_youtube_client.dart';
 import 'package:flow_music/features/autoplay/presentation/controllers/autoplay_queue_controller.dart';
 import 'package:flow_music/features/autoplay/presentation/controllers/cache_status_controller.dart';
 import 'package:flow_music/features/home/data/location_service.dart';
+import 'package:flow_music/features/home/presentation/controllers/home_view_controller.dart';
 import 'package:flow_music/features/monetization/application/monetization_coordinator.dart';
 import 'package:flow_music/features/monetization/application/monetization_coordinator_provider.dart';
 import 'package:flow_music/features/settings/presentation/controllers/autoplay_enabled_controller.dart';
@@ -31,6 +32,7 @@ class MainAppController {
   final Ref ref;
   DateTime? _lastLocationPromptAt;
   bool _wasInBackground = false;
+  final List<ProviderSubscription<Object?>> _subscriptions = [];
   late final MonetizationCoordinator _monetizationCoordinator = ref.read(
     monetizationCoordinatorProvider,
   );
@@ -40,6 +42,9 @@ class MainAppController {
     ref.read(songController).onVideoComplete = handleTrackComplete;
     flowAudioHandler.onSkipToNext = handleSkipToNext;
     flowAudioHandler.onSkipToPrevious = handleSkipToPrevious;
+    flowAudioHandler.prepareNextTrack = _prepareNextTrack;
+    flowAudioHandler.onAutoAdvanced = _handleAutoAdvanced;
+    _watchNativeQueueInputs();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(_promptCountryLocationAccessIfNeeded());
     });
@@ -47,6 +52,12 @@ class MainAppController {
   }
 
   void dispose() {
+    for (final subscription in _subscriptions) {
+      subscription.close();
+    }
+    _subscriptions.clear();
+    flowAudioHandler.prepareNextTrack = null;
+    flowAudioHandler.onAutoAdvanced = null;
     _monetizationCoordinator.dispose();
     final controller = ref.read(songController);
     if (controller.onVideoComplete == handleTrackComplete) {
@@ -61,6 +72,78 @@ class MainAppController {
     if (flowAudioHandler.onSkipToPrevious == handleSkipToPrevious) {
       flowAudioHandler.onSkipToPrevious = null;
     }
+  }
+
+  /// Mantiene la pista encolada en el reproductor nativo alineada con la
+  /// cola de autoplay y con los ajustes de repetir y autoplay.
+  void _watchNativeQueueInputs() {
+    unawaited(
+      flowAudioHandler.setRepeatCurrent(ref.read(repeatModeControllerProvider)),
+    );
+    _subscriptions
+      ..add(
+        ref.listen<bool>(repeatModeControllerProvider, (_, repeat) {
+          unawaited(flowAudioHandler.setRepeatCurrent(repeat));
+        }),
+      )
+      ..add(
+        ref.listen<String?>(
+          songController.select((controller) => controller.currentVideoId),
+          (_, videoId) {
+            if (videoId == null) return;
+            ref.read(homeViewProvider.notifier).followPlayingSong(videoId);
+          },
+        ),
+      )
+      ..add(
+        ref.listen<bool>(autoplayEnabledControllerProvider, (_, _) {
+          unawaited(flowAudioHandler.refreshQueuedNext());
+        }),
+      )
+      ..add(
+        ref.listen<String?>(
+          autoplayQueueControllerProvider.select(
+            (queue) => queue.upcoming.firstOrNull?.videoId,
+          ),
+          (_, nextId) {
+            if (flowAudioHandler.queuedNextId == nextId) return;
+            unawaited(flowAudioHandler.refreshQueuedNext());
+          },
+        ),
+      );
+  }
+
+  /// Siguiente pista del autoplay para la playlist nativa, o `null` si la
+  /// pista actual no viene de la cola (radio, video, repetir, autoplay off).
+  Future<QueuedTrack?> _prepareNextTrack(String currentId) async {
+    if (!ref.read(autoplayEnabledControllerProvider)) return null;
+    if (ref.read(repeatModeControllerProvider)) return null;
+    final controller = ref.read(songController);
+    if (controller.currentMode != PlaybackMode.audio) return null;
+    if (controller.currentVideoId != currentId) return null;
+    final queue = ref.read(autoplayQueueControllerProvider);
+    if (queue.current?.videoId != currentId) return null;
+
+    final next = await ref
+        .read(autoplayQueueControllerProvider.notifier)
+        .peekNextResolved();
+    if (next == null) return null;
+    if (ref.read(songController).currentVideoId != currentId) return null;
+    return controller.queuedTrackFor(next);
+  }
+
+  /// El reproductor nativo paso solo a [id]: avanza la cola y la cancion
+  /// actual sin volver a cargar el audio.
+  Future<void> _handleAutoAdvanced(String id) async {
+    final queue = ref.read(autoplayQueueControllerProvider);
+    NextTrack? track;
+    if (queue.upcoming.firstOrNull?.videoId == id) {
+      track = await ref
+          .read(autoplayQueueControllerProvider.notifier)
+          .playNext();
+      if (track?.suggestion.videoId != id) track = null;
+    }
+    ref.read(songController).adoptNativeAdvance(id: id, track: track);
   }
 
   Future<void> handleTrackComplete() async {
@@ -105,25 +188,17 @@ class MainAppController {
   void handleAppLifecycleState(AppLifecycleState state) {
     switch (state) {
       case AppLifecycleState.detached:
-        ref.read(mainController).setAudioStateDetached();
         unawaited(clearAudioCache());
       case AppLifecycleState.resumed:
         if (_wasInBackground) {
           _wasInBackground = false;
           _refreshNetworkConnections();
         }
-        ref.read(mainController).setAudioStateResumed();
         unawaited(_promptCountryLocationAccessIfNeeded());
-        break;
-      case AppLifecycleState.inactive:
-        ref.read(mainController).setAudioStateInactive();
-        break;
       case AppLifecycleState.paused:
         _wasInBackground = true;
-        ref.read(mainController).setAudioStatePaused();
-        break;
+      case AppLifecycleState.inactive:
       case AppLifecycleState.hidden:
-        ref.read(mainController).setAudioStateHidden();
         break;
     }
   }

@@ -2,7 +2,6 @@ import 'dart:math' as math;
 import 'dart:ui' show ImageFilter;
 
 import 'package:audio_service/audio_service.dart';
-import 'package:audioplayers/audioplayers.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flow_music/core/audio/background_audio_handler.dart';
 import 'package:flow_music/core/utils/locale_keys.g.dart';

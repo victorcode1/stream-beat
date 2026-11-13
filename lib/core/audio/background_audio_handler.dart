@@ -1,16 +1,23 @@
 import 'dart:async';
 
 import 'package:audio_service/audio_service.dart';
-import 'package:audioplayers/audioplayers.dart';
+import 'package:audio_session/audio_session.dart';
 import 'package:flutter/foundation.dart';
+import 'package:just_audio/just_audio.dart' as ja;
 
 import 'background_time.dart';
+import 'flow_player.dart';
 import 'remote_audio_proxy_stub.dart'
     if (dart.library.io) 'remote_audio_proxy_io.dart';
+
+export 'flow_player.dart';
 
 late final FlowAudioHandler flowAudioHandler;
 
 Future<FlowAudioHandler> initFlowAudioHandler() async {
+  final session = await AudioSession.instance;
+  await session.configure(const AudioSessionConfiguration.music());
+
   flowAudioHandler = await AudioService.init(
     builder: FlowAudioHandler.new,
     config: const AudioServiceConfig(
@@ -30,112 +37,428 @@ Future<FlowAudioHandler> initFlowAudioHandler() async {
   return flowAudioHandler;
 }
 
-/// Cada cuanto se consulta la posicion al reproductor nativo.
-///
-/// `audioplayers` la consulta por defecto en cada fotograma: hasta 120 llamadas
-/// por segundo al canal nativo en pantallas de 120 Hz, que ademas obligan a
-/// Flutter a dibujar sin parar y reconstruyen los reproductores en cada una.
-/// Cuatro veces por segundo basta para la barra de progreso y el fundido.
-const Duration positionUpdateInterval = Duration(milliseconds: 250);
+/// Pista lista para reproducirse o encolarse en el reproductor nativo.
+@immutable
+class QueuedTrack {
+  const QueuedTrack({
+    required this.id,
+    required this.title,
+    required this.artist,
+    this.artUrl,
+    this.duration,
+    this.filePath,
+    this.url,
+    this.mimeType,
+    this.requestHeaders = const {},
+    this.proxyRemoteSource = false,
+    this.contentLength,
+  }) : assert(filePath != null || url != null);
 
-class FlowAudioHandler extends BaseAudioHandler with SeekHandler {
-  FlowAudioHandler() {
-    player.positionUpdater = TimerPositionUpdater(
-      interval: positionUpdateInterval,
-      getPosition: player.getCurrentPosition,
-    );
-    _subscriptions.add(
-      player.onPlayerStateChanged.listen((state) {
-        _playerState = state;
-        // `stop()` forma parte del cambio de fuente. No debe reemplazar el
-        // estado `loading` de la pista nueva por un `idle` tardio de la pista
-        // anterior.
-        if (_isSwitchingSource && state == PlayerState.stopped) return;
-        _broadcastPlaybackState();
-      }),
-    );
-    _subscriptions.add(
-      player.onPositionChanged.listen((position) {
-        if (_isSwitchingSource) return;
-        // Si tenemos una duracion confiable (la cabecera del proveedor),
-        // recortamos la posicion reportada por audioplayers para que la UI
-        // nunca muestre tiempo "vacio" mas alla del final real del audio.
-        _position = _hasTrustedDuration && position > _duration
-            ? _duration
-            : position;
-        _maybeStartFadeOut(position);
-        // audioplayers sigue reproduciendo (silencio o padding) varios
-        // segundos despues del fin canonico, asi que `onPlayerComplete`
-        // llega tarde y autoplay se queda esperando. En cuanto la posicion
-        // toca la duracion reportada, disparamos el complete nosotros
-        // mismos para que la siguiente cancion arranque sin retraso.
-        if (!_completionFired &&
-            _duration > Duration.zero &&
-            position >= _duration) {
-          _completionFired = true;
-          unawaited(_handleCompletion());
-        }
-      }),
-    );
-    _subscriptions.add(
-      player.onDurationChanged.listen((duration) {
-        // Cuando el caller declara una duracion confiable (p.ej. el
-        // metadato canonico de YouTube), ignoramos la duracion reportada
-        // por audioplayers porque a veces excede el audio real por unos
-        // segundos. Esto evita el "tail" vacio en la barra de progreso.
-        if (_hasTrustedDuration) return;
-        _applyDuration(duration);
-      }, onError: _ignorePlayerStreamError),
-    );
-    _subscriptions.add(
-      player.onPlayerComplete.listen((_) {
-        if (_completionFired) return;
-        _completionFired = true;
-        unawaited(_handleCompletion());
-      }, onError: _ignorePlayerStreamError),
+  final String id;
+  final String title;
+  final String artist;
+  final String? artUrl;
+  final Duration? duration;
+
+  /// Copia local (descarga, cache o modo sin conexion). Tiene prioridad.
+  final String? filePath;
+  final String? url;
+  final String? mimeType;
+  final Map<String, String> requestHeaders;
+
+  /// Sirve la URL a traves del proxy local (necesario en iOS para YouTube).
+  final bool proxyRemoteSource;
+  final int? contentLength;
+
+  MediaItem toMediaItem() {
+    final art = artUrl;
+    final knownDuration = duration;
+    return MediaItem(
+      id: id,
+      title: title.isEmpty ? 'StreamBeat' : title,
+      artist: artist.isEmpty ? 'StreamBeat' : artist,
+      artUri: art == null || art.isEmpty ? null : Uri.parse(art),
+      duration: knownDuration != null && knownDuration > Duration.zero
+          ? knownDuration
+          : null,
     );
   }
+}
 
-  final AudioPlayer player = AudioPlayer();
+/// Reproductor de la app sobre `just_audio`, conectado a `audio_service`.
+///
+/// El autoplay no depende de que Dart despierte al terminar una cancion: en
+/// cuanto una pista empieza, se pide la siguiente ([prepareNextTrack]) y se
+/// agrega a la playlist nativa (AVQueuePlayer en iOS, ExoPlayer en Android).
+/// Al terminar, el sistema pasa solo a la siguiente aunque iOS tenga la app
+/// en segundo plano; Dart solo se entera despues ([onAutoAdvanced]) para
+/// actualizar la cola, el historial y la interfaz.
+class FlowAudioHandler extends BaseAudioHandler with SeekHandler {
+  FlowAudioHandler() {
+    _subscriptions
+      ..add(
+        _player.playerStateStream.listen(
+          _onPlayerState,
+          onError: _onPlayerStreamError,
+        ),
+      )
+      ..add(_player.currentIndexStream.listen(_onCurrentIndex))
+      ..add(_player.durationStream.listen(_onDuration))
+      ..add(
+        _player
+            .createPositionStream(
+              minPeriod: positionUpdateInterval,
+              maxPeriod: positionUpdateInterval,
+            )
+            .listen(_onPosition),
+      )
+      ..add(_player.errorStream.listen(_onPlayerError));
+  }
 
-  /// Reproduce silencio mientras se pasa de una cancion a otra.
+  final ja.AudioPlayer _player = ja.AudioPlayer();
+
+  /// Vista del reproductor para la interfaz.
+  late final FlowPlayer player = FlowPlayer(_player);
+
+  /// Reproduce silencio mientras Dart cambia de cancion sin cola nativa.
   ///
   /// iOS suspende una app de audio en segundo plano en cuanto deja de sonar.
-  /// Entre el fin de una cancion y el inicio de la siguiente hay que resolver
-  /// y cargar la nueva fuente, y la tarea en segundo plano no siempre alcanza:
-  /// la app quedaba congelada hasta volver a abrirla. Con este reproductor el
-  /// audio nunca se detiene durante el cambio.
-  late final AudioPlayer _gapPlayer = AudioPlayer(playerId: 'transition_gap');
-  static const _gapSource = 'audio/silence.wav';
-  final List<StreamSubscription> _subscriptions = [];
-  PlayerState _playerState = PlayerState.stopped;
-  Duration _position = Duration.zero;
+  /// Si la siguiente cancion no llego a encolarse, el cambio depende de Dart y
+  /// este reproductor evita que el audio se detenga entre una y otra.
+  late final ja.AudioPlayer _gapPlayer = ja.AudioPlayer(
+    handleInterruptions: false,
+  );
+  static const _gapAsset = 'assets/audio/silence.wav';
+  bool _gapLoaded = false;
+
+  final List<StreamSubscription<Object?>> _subscriptions = [];
+
+  /// Id de la pista que suena (la etiqueta de su fuente nativa).
+  String? _currentId;
+
+  /// Id de la pista ya agregada a la playlist nativa detras de la actual.
+  String? _queuedNextId;
+
   Duration _duration = Duration.zero;
   bool _hasTrustedDuration = false;
-  bool _completionFired = false;
-  bool _isSwitchingSource = false;
 
-  /// Identifica el cambio de fuente mas reciente. Los preparativos nativos de
-  /// una URL pueden terminar fuera de orden cuando el usuario toca varias
-  /// canciones rapidamente; solo la solicitud mas nueva puede publicar estado,
-  /// iniciar un fade o reportar un error.
+  /// Evita procesar dos veces el fin de la misma pista.
+  bool _completionHandled = false;
+
+  /// La pista actual llego a sonar; un error despues de esto se trata como
+  /// fin de pista para que el autoplay continue.
+  bool _currentStarted = false;
+  bool _repeatCurrent = false;
+  PlayerState? _lastLoggedState;
+
+  /// Identifica la carga mas reciente. Las cargas pueden terminar fuera de
+  /// orden cuando el usuario toca varias canciones rapidamente; solo la mas
+  /// nueva puede publicar estado, iniciar un fade o reportar un error.
   int _sourceGeneration = 0;
+
+  /// Invalida las peticiones de "siguiente pista" de una pista anterior.
+  int _queueGeneration = 0;
 
   static const Duration _fadeOutDuration = Duration(milliseconds: 2500);
   static const Duration _fadeInDuration = Duration(milliseconds: 700);
   static const Duration _fadeStep = Duration(milliseconds: 50);
-  static const Duration _nativeCleanupTimeout = Duration(seconds: 2);
   bool _smoothTransitions = true;
   bool _fadeOutStarted = false;
   int _fadeGeneration = 0;
+
+  /// Hook fired when the current track finishes and nothing was queued
+  /// natively. The app wires this to the autoplay queue.
+  Future<void> Function()? onTrackComplete;
+  Future<void> Function()? onSkipToNext;
+  Future<void> Function()? onSkipToPrevious;
+
+  /// Devuelve la pista que debe sonar despues de [currentId], o `null` si no
+  /// hay que encolar nada (autoplay apagado, repetir activo, radio, etc.).
+  Future<QueuedTrack?> Function(String currentId)? prepareNextTrack;
+
+  /// Avisa que el reproductor nativo paso solo a la pista [id].
+  Future<void> Function(String id)? onAutoAdvanced;
+
+  /// Disparado cuando la fuente no se puede reproducir. La UI lo usa para
+  /// avisar al usuario en vez de dejar el reproductor colgado en "loading".
+  Future<void> Function(Object error)? onPlaybackError;
 
   void setSmoothTransitions(bool value) {
     _smoothTransitions = value;
     if (!value) {
       _fadeGeneration++;
       _fadeOutStarted = false;
-      unawaited(player.setVolume(1));
+      unawaited(_player.setVolume(1));
     }
+  }
+
+  /// Repite la pista actual en el reproductor nativo.
+  Future<void> setRepeatCurrent(bool value) async {
+    _repeatCurrent = value;
+    await _player.setLoopMode(value ? ja.LoopMode.one : ja.LoopMode.off);
+    await refreshQueuedNext();
+  }
+
+  Future<void> playUrl({
+    required String url,
+    required String id,
+    required String title,
+    required String artist,
+    String? artUrl,
+    String? mimeType,
+    Duration? canonicalDuration,
+    Map<String, String> requestHeaders = const {},
+    bool proxyRemoteSource = false,
+    int? sourceContentLength,
+  }) {
+    return _playTrack(
+      QueuedTrack(
+        id: id,
+        title: title,
+        artist: artist,
+        artUrl: artUrl,
+        duration: canonicalDuration,
+        url: url,
+        mimeType: mimeType,
+        requestHeaders: requestHeaders,
+        proxyRemoteSource: proxyRemoteSource,
+        contentLength: sourceContentLength,
+      ),
+    );
+  }
+
+  Future<void> playFile({
+    required String filePath,
+    required String id,
+    required String title,
+    required String artist,
+    String? artUrl,
+    Duration? canonicalDuration,
+  }) {
+    return _playTrack(
+      QueuedTrack(
+        id: id,
+        title: title,
+        artist: artist,
+        artUrl: artUrl,
+        duration: canonicalDuration,
+        filePath: filePath,
+      ),
+    );
+  }
+
+  /// Reemplaza la playlist nativa por [track] y empieza a reproducirla.
+  Future<void> _playTrack(QueuedTrack track) async {
+    final generation = ++_sourceGeneration;
+    _queueGeneration++;
+    _queuedNextId = null;
+    _completionHandled = false;
+    _currentStarted = false;
+    _fadeGeneration++;
+    _fadeOutStarted = false;
+    _setCurrent(track.toMediaItem());
+    playbackState.add(
+      playbackState.value.copyWith(
+        processingState: AudioProcessingState.loading,
+        playing: true,
+        updatePosition: Duration.zero,
+        bufferedPosition: Duration.zero,
+      ),
+    );
+
+    try {
+      final source = await _buildSource(track);
+      if (!_isCurrentSource(generation)) return;
+      await _player.setVolume(_smoothTransitions ? 0 : 1);
+      await _player.setAudioSources([source]);
+      if (!_isCurrentSource(generation)) return;
+      unawaited(_player.play());
+      _startFadeIn();
+      unawaited(_queueNextTrack(_queueGeneration));
+    } on ja.PlayerInterruptedException {
+      // Otra carga reemplazo a esta antes de que terminara.
+      return;
+    } catch (error, stack) {
+      if (!_isCurrentSource(generation)) return;
+      _completionHandled = true;
+      await _handlePlaybackError(error, stack, generation);
+      Error.throwWithStackTrace(error, stack);
+    }
+  }
+
+  Future<ja.AudioSource> _buildSource(QueuedTrack track) async {
+    final item = track.toMediaItem();
+    final filePath = track.filePath;
+    if (filePath != null && filePath.isNotEmpty) {
+      return ja.AudioSource.file(filePath, tag: item);
+    }
+
+    final url = track.url!;
+    // El proxy entrega Content-Type, extension real y las cabeceras que
+    // YouTube exige; AVPlayer rechaza las URLs firmadas sin extension.
+    final playableUrl = track.proxyRemoteSource
+        ? await prepareRemoteAudioUrl(
+            url: url,
+            requestHeaders: track.requestHeaders,
+            mimeType: track.mimeType,
+            contentLength: track.contentLength,
+          )
+        : url;
+    return ja.AudioSource.uri(Uri.parse(playableUrl), tag: item);
+  }
+
+  /// Pide la siguiente pista y la agrega detras de la actual.
+  Future<void> _queueNextTrack(int queueGeneration) async {
+    final hook = prepareNextTrack;
+    final currentId = _currentId;
+    if (hook == null || currentId == null || _queuedNextId != null) return;
+    if (_repeatCurrent) return;
+
+    final QueuedTrack? next;
+    try {
+      next = await hook(currentId);
+    } catch (error) {
+      debugPrint('Could not prepare next track: $error');
+      return;
+    }
+    if (next == null || next.id == currentId) return;
+    if (queueGeneration != _queueGeneration || _queuedNextId != null) return;
+
+    _queuedNextId = next.id;
+    try {
+      final source = await _buildSource(next);
+      if (queueGeneration != _queueGeneration) {
+        _queuedNextId = null;
+        return;
+      }
+      await _player.addAudioSource(source);
+      debugPrint('Queued next track natively: ${next.id}');
+    } catch (error) {
+      _queuedNextId = null;
+      debugPrint('Could not queue next track ${next.id}: $error');
+    }
+  }
+
+  /// Quita la siguiente pista encolada y vuelve a pedirla. Se usa cuando
+  /// cambia la cola de autoplay o sus ajustes.
+  Future<void> refreshQueuedNext() async {
+    final generation = ++_queueGeneration;
+    if (_queuedNextId != null) {
+      _queuedNextId = null;
+      final index = _player.currentIndex ?? 0;
+      final length = _player.sequence.length;
+      if (index + 1 < length) {
+        try {
+          await _player.removeAudioSourceRange(index + 1, length);
+        } catch (error) {
+          debugPrint('Could not remove queued track: $error');
+        }
+      }
+    }
+    if (generation != _queueGeneration) return;
+    await _queueNextTrack(generation);
+  }
+
+  /// Id de la pista encolada en el reproductor nativo, si hay una.
+  String? get queuedNextId => _queuedNextId;
+
+  void _setCurrent(MediaItem item) {
+    _currentId = item.id;
+    final duration = item.duration;
+    _hasTrustedDuration = duration != null && duration > Duration.zero;
+    _duration = _hasTrustedDuration ? duration! : Duration.zero;
+    mediaItem.add(item);
+  }
+
+  void _onCurrentIndex(int? index) {
+    if (index == null) return;
+    final sequence = _player.sequence;
+    if (index < 0 || index >= sequence.length) return;
+    final item = sequence[index].tag;
+    if (item is! MediaItem || item.id == _currentId) return;
+
+    // El reproductor nativo paso solo a la siguiente pista.
+    debugPrint('Native auto-advance to ${item.id}');
+    _queueGeneration++;
+    _queuedNextId = null;
+    _completionHandled = false;
+    _currentStarted = true;
+    _fadeGeneration++;
+    _fadeOutStarted = false;
+    unawaited(_player.setVolume(1));
+    _setCurrent(item);
+    _broadcastPlaybackState();
+    unawaited(_afterAutoAdvance(item.id, index));
+  }
+
+  Future<void> _afterAutoAdvance(String id, int index) async {
+    // Quita las pistas terminadas para que la playlist no crezca.
+    if (index > 0) {
+      try {
+        await _player.removeAudioSourceRange(0, index);
+      } catch (error) {
+        debugPrint('Could not trim finished tracks: $error');
+      }
+    }
+    final hook = onAutoAdvanced;
+    if (hook != null) {
+      try {
+        await hook(id);
+      } catch (error, stack) {
+        debugPrint('Auto-advance hook failed: $error\n$stack');
+      }
+    }
+    // Durante el hook la cola de autoplay avanza y puede pedir la siguiente
+    // antes de que la app adopte la pista nueva; esa peticion no encola nada.
+    // Ya adoptada, se pide de nuevo si sigue faltando.
+    if (_currentId != id || _queuedNextId != null) return;
+    await refreshQueuedNext();
+  }
+
+  void _onPlayerState(ja.PlayerState state) {
+    if (state.processingState == ja.ProcessingState.ready) {
+      _currentStarted = true;
+    }
+    _broadcastPlaybackState();
+    if (state.processingState == ja.ProcessingState.completed &&
+        !_completionHandled) {
+      _completionHandled = true;
+      unawaited(_handleCompletion());
+    }
+  }
+
+  void _onDuration(Duration? duration) {
+    if (duration == null || duration <= Duration.zero) return;
+    // La duracion de los metadatos es la canonica; la nativa solo se usa si
+    // no hay otra.
+    if (_hasTrustedDuration) return;
+    _duration = duration;
+    final current = mediaItem.value;
+    if (current != null && current.id == _currentId) {
+      mediaItem.add(current.copyWith(duration: duration));
+    }
+    _broadcastPlaybackState();
+  }
+
+  void _onPosition(Duration position) {
+    // Con la siguiente pista encolada el paso es continuo; el fundido solo se
+    // usa cuando el cambio depende de Dart.
+    if (_queuedNextId != null || _repeatCurrent) return;
+    _maybeStartFadeOut(position);
+  }
+
+  void _onPlayerError(ja.PlayerException error) {
+    debugPrint('Audio player error: ${error.code} ${error.message}');
+    // Un fallo a mitad de una pista que ya sonaba (p. ej. se corto la red) no
+    // debe detener el autoplay.
+    if (!_currentStarted || _completionHandled) return;
+    _completionHandled = true;
+    unawaited(_handleCompletion());
+  }
+
+  void _onPlayerStreamError(Object error, StackTrace stack) {
+    // La carga (setAudioSources) ya reporta sus errores; evita duplicarlos
+    // como excepciones no atendidas.
   }
 
   void _maybeStartFadeOut(Duration position) {
@@ -157,159 +480,21 @@ class FlowAudioHandler extends BaseAudioHandler with SeekHandler {
     final steps = (total.inMilliseconds / _fadeStep.inMilliseconds)
         .floor()
         .clamp(1, 1000);
-    await player.setVolume(from);
+    await _player.setVolume(from);
     for (var i = 1; i <= steps; i++) {
       await Future<void>.delayed(_fadeStep);
       if (generation != _fadeGeneration) return;
       final volume = (from + (to - from) * (i / steps)).clamp(0.0, 1.0);
-      await player.setVolume(volume);
+      await _player.setVolume(volume);
     }
-  }
-
-  /// Hook fired when the current track finishes naturally. The app wires this
-  /// to the autoplay queue so the next prefetched suggestion plays.
-  Future<void> Function()? onTrackComplete;
-  Future<void> Function()? onSkipToNext;
-  Future<void> Function()? onSkipToPrevious;
-
-  /// Disparado cuando la fuente no se puede reproducir (p. ej. un stream de
-  /// radio HTTP bloqueado en web por mixed content, o un formato que el
-  /// navegador no soporta -> MEDIA_ELEMENT_ERROR Code 4). La UI lo usa para
-  /// avisar al usuario en vez de dejar el reproductor colgado en "loading".
-  Future<void> Function(Object error)? onPlaybackError;
-
-  Future<void> playUrl({
-    required String url,
-    required String id,
-    required String title,
-    required String artist,
-    String? artUrl,
-    String? mimeType,
-    Duration? canonicalDuration,
-    Map<String, String> requestHeaders = const {},
-    bool proxyRemoteSource = false,
-    int? sourceContentLength,
-  }) async {
-    final generation = ++_sourceGeneration;
-    if (!await _resetForNewSource(generation)) return;
-    if (canonicalDuration != null && canonicalDuration > Duration.zero) {
-      _duration = canonicalDuration;
-      _hasTrustedDuration = true;
-    }
-    _setMediaItem(id: id, title: title, artist: artist, artUrl: artUrl);
-    playbackState.add(
-      playbackState.value.copyWith(
-        processingState: AudioProcessingState.loading,
-        playing: true,
-        updatePosition: Duration.zero,
-        bufferedPosition: Duration.zero,
-      ),
-    );
-    try {
-      await _playRemoteSource(
-        url: url,
-        mimeType: mimeType,
-        requestHeaders: requestHeaders,
-        proxyRemoteSource: proxyRemoteSource,
-        sourceContentLength: sourceContentLength,
-      );
-      if (!_isCurrentSource(generation)) return;
-      _isSwitchingSource = false;
-      _startFadeIn();
-    } catch (error, stack) {
-      if (!_isCurrentSource(generation)) return;
-      _isSwitchingSource = false;
-      await _handlePlaybackError(error, stack, generation);
-      Error.throwWithStackTrace(error, stack);
-    }
-  }
-
-  Future<void> playFile({
-    required String filePath,
-    required String id,
-    required String title,
-    required String artist,
-    String? artUrl,
-    Duration? canonicalDuration,
-  }) async {
-    final generation = ++_sourceGeneration;
-    if (!await _resetForNewSource(generation)) return;
-    if (canonicalDuration != null && canonicalDuration > Duration.zero) {
-      _duration = canonicalDuration;
-      _hasTrustedDuration = true;
-    }
-    _setMediaItem(id: id, title: title, artist: artist, artUrl: artUrl);
-    playbackState.add(
-      playbackState.value.copyWith(
-        processingState: AudioProcessingState.loading,
-        playing: true,
-        updatePosition: Duration.zero,
-        bufferedPosition: Duration.zero,
-      ),
-    );
-    try {
-      await player.play(DeviceFileSource(filePath));
-      if (!_isCurrentSource(generation)) return;
-      _isSwitchingSource = false;
-      _startFadeIn();
-    } catch (error, stack) {
-      if (!_isCurrentSource(generation)) return;
-      _isSwitchingSource = false;
-      await _handlePlaybackError(error, stack, generation);
-      Error.throwWithStackTrace(error, stack);
-    }
-  }
-
-  Future<bool> _resetForNewSource(int generation) async {
-    _isSwitchingSource = true;
-    _completionFired = true;
-    _fadeGeneration++;
-    // audioplayers can otherwise keep the previous MediaPlayer/AVPlayer alive
-    // briefly, leaving two streams overlapping (most noticeable when the new
-    // source is a live radio stream that takes longer to start).
-    try {
-      await player.stop().timeout(_nativeCleanupTimeout);
-    } catch (_) {}
-    if (!_isCurrentSource(generation)) return false;
-    _position = Duration.zero;
-    _duration = Duration.zero;
-    _hasTrustedDuration = false;
-    _completionFired = false;
-    _fadeGeneration++;
-    _fadeOutStarted = false;
-    await player.setVolume(_smoothTransitions ? 0 : 1);
-    return _isCurrentSource(generation);
-  }
-
-  bool _isCurrentSource(int generation) => generation == _sourceGeneration;
-
-  Future<void> _playRemoteSource({
-    required String url,
-    String? mimeType,
-    required Map<String, String> requestHeaders,
-    required bool proxyRemoteSource,
-    required int? sourceContentLength,
-  }) async {
-    final playableUrl = proxyRemoteSource
-        ? await prepareRemoteAudioUrl(
-            url: url,
-            requestHeaders: requestHeaders,
-            mimeType: mimeType,
-            contentLength: sourceContentLength,
-          )
-        : url;
-    // El proxy ya entrega Content-Type y una extension real. Forzar el MIME
-    // mediante AVURLAssetOverrideMIMETypeKey hace que algunas versiones de
-    // AVPlayer marquen una fuente HTTP local valida como `.failed`.
-    await player.play(
-      UrlSource(playableUrl, mimeType: proxyRemoteSource ? null : mimeType),
-    );
   }
 
   void _startFadeIn() {
     if (!_smoothTransitions) return;
     unawaited(_runFade(from: 0, to: 1, total: _fadeInDuration));
   }
+
+  bool _isCurrentSource(int generation) => generation == _sourceGeneration;
 
   Future<void> _handleCompletion() => _withoutAudioGap(_completeAndAdvance);
 
@@ -329,8 +514,12 @@ class FlowAudioHandler extends BaseAudioHandler with SeekHandler {
 
   Future<void> _startGapAudio() async {
     try {
-      await _gapPlayer.setReleaseMode(ReleaseMode.loop);
-      await _gapPlayer.play(AssetSource(_gapSource));
+      if (!_gapLoaded) {
+        await _gapPlayer.setLoopMode(ja.LoopMode.one);
+        await _gapPlayer.setAudioSource(ja.AudioSource.asset(_gapAsset));
+        _gapLoaded = true;
+      }
+      unawaited(_gapPlayer.play());
     } catch (error) {
       debugPrint('Transition gap audio failed to start: $error');
     }
@@ -338,7 +527,7 @@ class FlowAudioHandler extends BaseAudioHandler with SeekHandler {
 
   Future<void> _stopGapAudio() async {
     try {
-      await _gapPlayer.stop();
+      await _gapPlayer.pause();
     } catch (error) {
       debugPrint('Transition gap audio failed to stop: $error');
     }
@@ -346,17 +535,14 @@ class FlowAudioHandler extends BaseAudioHandler with SeekHandler {
 
   Future<void> _completeAndAdvance() async {
     final generation = _sourceGeneration;
-    // Detenemos audioplayers explicitamente para que no siga reproduciendo
-    // padding/silencio detras del fin canonico cuando autoplay esta
-    // desactivado o no hay siguiente cancion en la cola.
-    await player.stop();
+    // Queda en pausa al final: si el autoplay no sigue, la interfaz muestra la
+    // pista terminada; si sigue, la nueva carga la reemplaza.
+    await _player.pause();
     if (!_isCurrentSource(generation)) return;
-    _position = Duration.zero;
     playbackState.add(
       playbackState.value.copyWith(
         processingState: AudioProcessingState.completed,
         playing: false,
-        updatePosition: _position,
       ),
     );
     // Se espera al hook para que la tarea en segundo plano dure hasta que la
@@ -378,18 +564,15 @@ class FlowAudioHandler extends BaseAudioHandler with SeekHandler {
   ) async {
     if (!_isCurrentSource(generation)) return;
     debugPrint('Audio playback error: $error');
-    // Evita que onPositionChanged dispare un "completion" fantasma sobre una
-    // fuente que nunca llego a sonar.
-    _completionFired = true;
     _fadeGeneration++;
     try {
-      await player.stop();
+      await _player.stop();
     } catch (_) {}
     if (!_isCurrentSource(generation)) return;
     // Restauramos volumen para que la proxima fuente no quede en silencio por
     // el fade-in que no llego a completarse.
     try {
-      await player.setVolume(1);
+      await _player.setVolume(1);
     } catch (_) {}
     playbackState.add(
       playbackState.value.copyWith(
@@ -404,45 +587,30 @@ class FlowAudioHandler extends BaseAudioHandler with SeekHandler {
     }
   }
 
-  void _ignorePlayerStreamError(Object _, StackTrace _) {
-    // The awaited play/setSource call owns source errors. Without an error
-    // handler, every derived audioplayers stream reports the same platform
-    // failure as a separate uncaught exception.
-  }
-
-  void _applyDuration(Duration duration, {bool trusted = false}) {
-    _duration = duration;
-    if (trusted) _hasTrustedDuration = true;
-    final current = mediaItem.value;
-    if (current != null) {
-      mediaItem.add(current.copyWith(duration: duration));
-    }
-    _broadcastPlaybackState();
+  @override
+  Future<void> play() async {
+    unawaited(_player.play());
   }
 
   @override
-  Future<void> play() => player.resume();
-
-  @override
-  Future<void> pause() => player.pause();
+  Future<void> pause() => _player.pause();
 
   @override
   Future<void> stop() async {
     final generation = ++_sourceGeneration;
-    _isSwitchingSource = true;
-    _completionFired = true;
+    _queueGeneration++;
+    _queuedNextId = null;
+    _completionHandled = true;
+    _currentStarted = false;
     _fadeGeneration++;
     try {
-      await player.stop();
+      await _player.stop();
     } catch (error) {
       debugPrint('Could not stop previous audio source: $error');
     }
     if (!_isCurrentSource(generation)) return;
-    _position = Duration.zero;
     _duration = Duration.zero;
     _hasTrustedDuration = false;
-    _playerState = PlayerState.stopped;
-    _isSwitchingSource = false;
     playbackState.add(
       playbackState.value.copyWith(
         processingState: AudioProcessingState.idle,
@@ -456,27 +624,34 @@ class FlowAudioHandler extends BaseAudioHandler with SeekHandler {
 
   @override
   Future<void> seek(Duration position) async {
-    await player.seek(position);
-    _position = position;
+    await _player.seek(position);
     _broadcastPlaybackState();
   }
 
   @override
   Future<void> fastForward() {
     return seek(
-      _boundedPosition(_position + AudioService.config.fastForwardInterval),
+      _boundedPosition(
+        _player.position + AudioService.config.fastForwardInterval,
+      ),
     );
   }
 
   @override
   Future<void> rewind() {
     return seek(
-      _boundedPosition(_position - AudioService.config.rewindInterval),
+      _boundedPosition(_player.position - AudioService.config.rewindInterval),
     );
   }
 
   @override
   Future<void> skipToNext() async {
+    // Si la siguiente ya esta en la playlist nativa, el salto es inmediato y
+    // la app se entera por [onAutoAdvanced], igual que al terminar la pista.
+    if (_queuedNextId != null && _player.hasNext) {
+      await _player.seekToNext();
+      return;
+    }
     final hook = onSkipToNext;
     if (hook == null) return;
     await _withoutAudioGap(hook);
@@ -496,25 +671,8 @@ class FlowAudioHandler extends BaseAudioHandler with SeekHandler {
     for (final subscription in _subscriptions) {
       await subscription.cancel();
     }
-    await player.dispose();
+    await _player.dispose();
     await _gapPlayer.dispose();
-  }
-
-  void _setMediaItem({
-    required String id,
-    required String title,
-    required String artist,
-    String? artUrl,
-  }) {
-    mediaItem.add(
-      MediaItem(
-        id: id,
-        title: title.isEmpty ? 'StreamBeat' : title,
-        artist: artist.isEmpty ? 'StreamBeat' : artist,
-        artUri: artUrl == null || artUrl.isEmpty ? null : Uri.parse(artUrl),
-        duration: _duration == Duration.zero ? null : _duration,
-      ),
-    );
   }
 
   Duration _boundedPosition(Duration position) {
@@ -524,11 +682,13 @@ class FlowAudioHandler extends BaseAudioHandler with SeekHandler {
   }
 
   void _broadcastPlaybackState() {
-    final playing = _playerState == PlayerState.playing;
-    final processingState = switch (_playerState) {
-      PlayerState.stopped => AudioProcessingState.idle,
-      PlayerState.completed => AudioProcessingState.completed,
-      _ => AudioProcessingState.ready,
+    final playing = _player.playing;
+    final processingState = switch (_player.processingState) {
+      ja.ProcessingState.idle => AudioProcessingState.idle,
+      ja.ProcessingState.loading => AudioProcessingState.loading,
+      ja.ProcessingState.buffering => AudioProcessingState.buffering,
+      ja.ProcessingState.ready => AudioProcessingState.ready,
+      ja.ProcessingState.completed => AudioProcessingState.completed,
     };
 
     playbackState.add(
@@ -543,15 +703,16 @@ class FlowAudioHandler extends BaseAudioHandler with SeekHandler {
         systemActions: const {MediaAction.seek},
         processingState: processingState,
         playing: playing,
-        updatePosition: _position,
-        // audioplayers no expone la cantidad de bytes/tiempo almacenados. La
-        // posicion de reproduccion no es un buffer y publicarla como tal hacia
-        // que algunas interfaces parecieran seguir cargando la pista anterior.
-        bufferedPosition: Duration.zero,
-        speed: 1,
+        updatePosition: _player.position,
+        bufferedPosition: _player.bufferedPosition,
+        speed: _player.speed,
       ),
     );
 
-    debugPrint('Background audio state: $_playerState');
+    final state = player.state;
+    if (state != _lastLoggedState) {
+      _lastLoggedState = state;
+      debugPrint('Background audio state: $state');
+    }
   }
 }

@@ -1,4 +1,4 @@
-import 'package:audioplayers/audioplayers.dart';
+import 'package:flow_music/core/audio/flow_player.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flow_music/core/theme/custom_theme.dart';
 import 'package:flow_music/core/utils/adaptive_layout.dart';
@@ -19,7 +19,7 @@ import 'modern_player_wide_layout.dart';
 ///
 /// Solo compone layout y delega estado y comandos al controller de presentacion.
 class ModernPlayerWidget extends StatefulWidget {
-  final AudioPlayer audioPlayer;
+  final FlowPlayer audioPlayer;
   final VideoPlayerController? videoController;
   final String? webEmbedVideoId;
   final String? currentVideoId;

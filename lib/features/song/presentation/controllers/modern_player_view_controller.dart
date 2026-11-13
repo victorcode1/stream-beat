@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:audio_service/audio_service.dart';
-import 'package:audioplayers/audioplayers.dart';
 import 'package:flow_music/core/audio/background_audio_handler.dart';
 import 'package:flutter/foundation.dart';
 import 'package:video_player/video_player.dart';
@@ -13,7 +12,7 @@ import 'modern_player_view_state.dart';
 /// Centraliza listeners, timers, comandos de audio/video y el estado derivado
 /// que la vista necesita para renderizarse.
 class ModernPlayerViewController extends ValueNotifier<ModernPlayerViewState> {
-  final AudioPlayer audioPlayer;
+  final FlowPlayer audioPlayer;
 
   VideoPlayerController? _videoController;
   String? _currentVideoId;
@@ -56,6 +55,7 @@ class ModernPlayerViewController extends ValueNotifier<ModernPlayerViewState> {
     if (_currentVideoId != currentVideoId) {
       _currentVideoId = currentVideoId;
       _resetTrackProgress();
+      _restoreTrackProgress();
     }
 
     if (_playbackRate != playbackRate) {
@@ -242,6 +242,33 @@ class ModernPlayerViewController extends ValueNotifier<ModernPlayerViewState> {
       return limit;
     }
     return position;
+  }
+
+  /// Vuelve a leer la duracion y la posicion de la pista que ya suena.
+  ///
+  /// Si el autoplay cambio de cancion en segundo plano, la duracion llego
+  /// mientras la pantalla no se redibujaba. Al volver, este sync ve el id nuevo
+  /// y reinicia el progreso; sin releerlo, la barra quedaba en 00:00 y no
+  /// permitia adelantar.
+  void _restoreTrackProgress() {
+    final item = flowAudioHandler.mediaItem.value;
+    final trusted = item?.duration;
+    if (item != null &&
+        item.id == _currentVideoId &&
+        trusted != null &&
+        trusted > Duration.zero) {
+      _emit(value.copyWith(trustedDuration: trusted));
+    }
+    audioPlayer.getDuration().then((duration) {
+      if (duration != null && duration > Duration.zero) {
+        _emit(value.copyWith(duration: duration));
+      }
+    });
+    audioPlayer.getCurrentPosition().then((position) {
+      if (position != null) {
+        _emit(value.copyWith(position: _clampPosition(position)));
+      }
+    });
   }
 
   void _resetTrackProgress() {

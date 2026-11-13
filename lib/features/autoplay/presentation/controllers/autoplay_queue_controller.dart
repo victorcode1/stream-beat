@@ -305,6 +305,30 @@ class AutoplayQueueController extends _$AutoplayQueueController {
     return NextTrack(suggestion: next, resolved: resolvedAudio);
   }
 
+  /// La siguiente pista ya resuelta, sin avanzar la cola.
+  ///
+  /// El reproductor la encola en su playlist nativa antes de que termine la
+  /// actual, para que el paso de cancion no dependa de Dart en segundo plano.
+  /// Si aun no estaba resuelta (o su URL caduco), la resuelve ahora.
+  Future<NextTrack?> peekNextResolved() async {
+    if (!await ensureNext()) return null;
+    final head = state.upcoming.firstOrNull;
+    if (head == null || head.videoId.isEmpty) return null;
+
+    final known = state.resolved[head.videoId];
+    if (known != null && !known.isUrlExpired) {
+      return NextTrack(suggestion: head, resolved: known);
+    }
+
+    final resolved = await ref.read(autoplayAudioResolverProvider)(head);
+    if (!ref.mounted || resolved == null) return null;
+    if (state.upcoming.firstOrNull?.videoId != head.videoId) return null;
+    state = state.copyWith(
+      resolved: {...state.resolved, head.videoId: resolved},
+    );
+    return NextTrack(suggestion: head, resolved: resolved);
+  }
+
   /// Ensure there is a concrete next song. This is public so playback entry
   /// points can await an urgent network refill when necessary.
   Future<bool> ensureNext() async {

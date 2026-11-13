@@ -87,6 +87,21 @@ class HomeView extends _$HomeView {
     );
   }
 
+  /// Mantiene la vista del reproductor en la cancion que suena.
+  ///
+  /// El autoplay cambia de cancion sin pasar por esta vista. Si se quedaba con
+  /// el id viejo, al volver a Inicio (p. ej. desde el mapa) la vista se
+  /// reconstruia y volvia a cargar aquella cancion, cortando la que sonaba.
+  void followPlayingSong(String videoId) {
+    final current = state;
+    if (current is! PlaySong || videoId.isEmpty) return;
+    final params = current.queryParameters ?? const <String, String>{};
+    if (params['idSong'] == videoId) return;
+    state = ViewState.playSong(
+      queryParameters: {...params, 'idSong': videoId}..remove('durationMs'),
+    );
+  }
+
   void back() {
     final previous = _previousState ?? ViewState.suggested();
     _previousState = null;

@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:audio_service/audio_service.dart';
-import 'package:audioplayers/audioplayers.dart';
 import 'package:flow_music/core/audio/background_audio_handler.dart';
 import 'package:flow_music/core/routes/routes.dart';
 import 'package:flow_music/features/autoplay/presentation/controllers/autoplay_queue_controller.dart';
@@ -21,7 +20,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 /// pantalla principal cuando hay audio en segundo plano. Permite al
 /// usuario ver que esta sonando, pausar/reanudar y abrir el reproductor
 /// completo. La barra de progreso usa los streams del propio
-/// `AudioPlayer` para mantenerse fluida sin depender de broadcasts del
+/// `FlowPlayer` para mantenerse fluida sin depender de broadcasts del
 /// `PlaybackState` (que solo se emiten en cambios de estado).
 ///
 /// Se oculta cuando no hay un `MediaItem` real (titulo vacio o placeholder

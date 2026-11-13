@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:audioplayers/audioplayers.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flow_music/core/audio/background_audio_handler.dart';
 import 'package:flow_music/core/theme/custom_theme.dart';

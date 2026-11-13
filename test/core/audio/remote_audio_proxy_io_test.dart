@@ -146,21 +146,29 @@ void main() {
     expect(Uri.parse(localUrl).path, endsWith('.mp4'));
   });
 
-  test('invalidates the previous local URL when the song changes', () async {
-    final firstUrl = await proxy.register(
-      url:
-          'http://${upstreamServer.address.address}:${upstreamServer.port}/first',
+  test('keeps the playing URL valid when the next song is queued', () async {
+    String upstream(String path) =>
+        'http://${upstreamServer.address.address}:${upstreamServer.port}/$path';
+    Future<int> statusOf(String url) async {
+      final response = await (await client.getUrl(Uri.parse(url))).close();
+      await response.drain<void>();
+      return response.statusCode;
+    }
+
+    final playingUrl = await proxy.register(
+      url: upstream('playing'),
       mimeType: 'audio/mp4',
     );
-    await proxy.register(
-      url:
-          'http://${upstreamServer.address.address}:${upstreamServer.port}/second',
-      mimeType: 'audio/mp4',
-    );
+    await proxy.register(url: upstream('next'), mimeType: 'audio/mp4');
 
-    final response = await (await client.getUrl(Uri.parse(firstUrl))).close();
-    await response.drain<void>();
+    // La cancion que suena sigue disponible aunque la siguiente ya este en la
+    // cola nativa.
+    expect(await statusOf(playingUrl), HttpStatus.ok);
 
-    expect(response.statusCode, HttpStatus.notFound);
+    // Las fuentes viejas se descartan para no acumularlas sin limite.
+    for (var i = 0; i < 4; i++) {
+      await proxy.register(url: upstream('later-$i'), mimeType: 'audio/mp4');
+    }
+    expect(await statusOf(playingUrl), HttpStatus.notFound);
   });
 }

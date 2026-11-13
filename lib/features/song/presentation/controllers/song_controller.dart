@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:developer';
 
-import 'package:audioplayers/audioplayers.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flow_music/core/audio/background_audio_handler.dart';
 import 'package:flow_music/core/utils/locale_keys.g.dart';
@@ -227,8 +226,8 @@ class SongController extends ChangeNotifier {
   String? get currentVideoId => _currentVideoId;
   String? get webEmbedVideoId => _webEmbedVideoId;
   FlowAudioHandler get _audioHandler => flowAudioHandler;
-  AudioPlayer get _audioPlayer => _audioHandler.player;
-  AudioPlayer get audioPlayer => _audioPlayer;
+  FlowPlayer get _audioPlayer => _audioHandler.player;
+  FlowPlayer get audioPlayer => _audioPlayer;
   DownloadedAudio? get _currentDownloadedAudio {
     final downloadedAudio = _downloadedAudio;
     if (downloadedAudio == null) return null;
@@ -394,6 +393,97 @@ class SongController extends ChangeNotifier {
     } else {
       await playVideo(id: id);
     }
+  }
+
+  /// Pista para encolar en el reproductor nativo detras de la actual.
+  ///
+  /// Prefiere la copia local (sin conexion o cache del prefetch). Devuelve
+  /// `null` si solo queda una URL caducada: esa pista se resolvera de nuevo
+  /// cuando le toque por el camino normal.
+  Future<QueuedTrack?> queuedTrackFor(NextTrack next) async {
+    final resolved = next.resolved;
+    if (resolved == null || kIsWeb) return null;
+    final suggestion = next.suggestion;
+    final offline = await getOfflineAudio(resolved.videoId);
+    final cachedPath =
+        resolved.cacheFilePath ?? await cachedAudioPath(resolved.videoId);
+    final filePath = offline?.filePath ?? cachedPath;
+    final title = offline?.title ?? resolved.title ?? suggestion.displayText;
+    final artist =
+        offline?.author ?? resolved.author ?? suggestion.channelTitle;
+    final artUrl =
+        offline?.thumbnailUrl ??
+        resolved.thumbnailUrl ??
+        suggestion.thumbnailUrl;
+
+    if (filePath != null && filePath.isNotEmpty) {
+      return QueuedTrack(
+        id: resolved.videoId,
+        title: title,
+        artist: artist,
+        artUrl: artUrl,
+        duration: resolved.duration,
+        filePath: filePath,
+      );
+    }
+    if (resolved.isUrlExpired) return null;
+    final rangeEnd = resolved.rangeEnd;
+    return QueuedTrack(
+      id: resolved.videoId,
+      title: title,
+      artist: artist,
+      artUrl: artUrl,
+      duration: resolved.duration,
+      url: resolved.audioUrl,
+      mimeType: resolved.mimeType,
+      requestHeaders: resolved.requestHeaders,
+      proxyRemoteSource: _isApplePlatform,
+      contentLength: rangeEnd == null ? null : rangeEnd + 1,
+    );
+  }
+
+  /// El reproductor nativo paso solo a [id] desde la cola de autoplay.
+  ///
+  /// Actualiza el estado de la cancion actual sin volver a cargar el audio,
+  /// que ya esta sonando. [track] es la entrada de la cola, si coincide.
+  void adoptNativeAdvance({required String id, NextTrack? track}) {
+    _invalidatePlaybackRequests();
+    final item = _audioHandler.mediaItem.value;
+    final resolved = track?.resolved;
+    final suggestion = track?.suggestion;
+    _currentMode = PlaybackMode.audio;
+    _currentVideoId = id;
+    _isPlayingDownloadedAudio = false;
+    _isPlayingDownloadedVideo = false;
+    _isPlayingOfflineAudio = false;
+    _downloadedAudio = null;
+    _offlineAudio = null;
+    _videoInfo = null;
+    _webEmbedVideoId = null;
+    _webVideoTitle = resolved?.title ?? suggestion?.displayText ?? item?.title;
+    _webVideoAuthor =
+        resolved?.author ?? suggestion?.channelTitle ?? item?.artist;
+    _webVideoThumbnailUrl =
+        resolved?.thumbnailUrl ??
+        suggestion?.thumbnailUrl ??
+        item?.artUri?.toString();
+    _isLoading = false;
+    notifyListeners();
+    unawaited(_recordCurrentSong(id));
+    unawaited(_loadLocalCopies(id));
+  }
+
+  /// Carga en segundo plano si la pista actual tiene copia descargada o sin
+  /// conexion, para que la interfaz muestre su estado.
+  Future<void> _loadLocalCopies(String videoId) async {
+    final copies = await Future.wait<DownloadedAudio?>([
+      getDownloadedAudio(videoId),
+      getOfflineAudio(videoId),
+    ]);
+    if (_currentVideoId != videoId) return;
+    _downloadedAudio = copies[0];
+    _offlineAudio = copies[1];
+    notifyListeners();
   }
 
   /// Start playback from an already-resolved audio stream, skipping the
@@ -1155,32 +1245,6 @@ class SongController extends ChangeNotifier {
       yt?.close();
       _isDownloading = false;
       notifyListeners();
-    }
-  }
-
-  void setSourceForId({required String id}) async {
-    try {
-      final extracted = extractVideoId(id);
-      final videoId = extracted ?? id;
-      if (kIsWeb) {
-        _webEmbedVideoId = videoId;
-        notifyListeners();
-        return;
-      }
-
-      var yt = YoutubeExplode();
-      var manifest = await yt.videos.streamsClient.getManifest(videoId);
-      if (manifest.audioOnly.isEmpty) {
-        debugPrint('No audio streams available for video: $videoId');
-        yt.close();
-        return;
-      }
-      var audioStream = manifest.audioOnly.withHighestBitrate();
-      yt.close();
-
-      await _audioPlayer.setSourceUrl(audioStream.url.toString());
-    } catch (e) {
-      debugPrint('Error setting source: $e');
     }
   }
 
