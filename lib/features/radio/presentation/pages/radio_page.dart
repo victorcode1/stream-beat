@@ -11,9 +11,11 @@ import 'package:flow_music/features/home/presentation/providers/text_search.dart
 import 'package:flow_music/features/radio/data/models/radio_station.dart';
 import 'package:flow_music/features/radio/data/models/radio_tag.dart';
 import 'package:flow_music/features/radio/data/repositories/radio_browser_repository.dart';
+import 'package:flow_music/features/radio/domain/station_directory_mode.dart';
 import 'package:flow_music/features/radio/presentation/controllers/radio_favorites_controller.dart';
 import 'package:flow_music/features/radio/presentation/controllers/radio_queue_controller.dart';
 import 'package:flow_music/features/radio/presentation/utils/play_radio_station.dart';
+import 'package:flow_music/features/radio/presentation/widgets/add_station_dialog.dart';
 import 'package:flow_music/features/radio/presentation/widgets/radio_playlist_actions.dart';
 import 'package:flow_music/features/radio/presentation/widgets/station_links.dart';
 import 'package:flow_music/features/settings/presentation/pages/station_rights_page.dart';
@@ -123,7 +125,7 @@ class _RadioPageState extends ConsumerState<RadioPage> {
     _searchController.addListener(_onSearchChanged);
 
     if (_lastSearchText.isEmpty) {
-      _stationsFuture = _repository.topStations().guarded();
+      _stationsFuture = _defaultStations();
     } else {
       _stationsFuture = _repository
           .searchStations(name: _lastSearchText)
@@ -139,6 +141,18 @@ class _RadioPageState extends ConsumerState<RadioPage> {
     _repository.close();
     super.dispose();
   }
+
+  /// Sin búsqueda ni filtros: Android muestra las más escuchadas; iOS y macOS
+  /// esperan a que el usuario busque (ver [stationDirectoryIsSearchFirst]).
+  Future<List<RadioStation>> _defaultStations() {
+    if (stationDirectoryIsSearchFirst) return Future.value(const []);
+    return _repository.topStations().guarded();
+  }
+
+  bool get _hasActiveSearch =>
+      _lastSearchText.isNotEmpty ||
+      _selectedTag.isNotEmpty ||
+      _selectedCountryCode.isNotEmpty;
 
   void _onSearchChanged() {
     final text = _searchController.text;
@@ -165,7 +179,7 @@ class _RadioPageState extends ConsumerState<RadioPage> {
       _selectedCountryCode = nextCountryCode;
       _stationsFuture =
           (nextQuery.isEmpty && nextTag.isEmpty && nextCountryCode.isEmpty)
-          ? _repository.topStations().guarded()
+          ? _defaultStations()
           : _repository
                 .searchStations(
                   name: nextQuery,
@@ -182,7 +196,7 @@ class _RadioPageState extends ConsumerState<RadioPage> {
     setState(() {
       _selectedTag = '';
       _selectedCountryCode = '';
-      _stationsFuture = _repository.topStations().guarded();
+      _stationsFuture = _defaultStations();
     });
   }
 
@@ -301,9 +315,7 @@ class _RadioPageState extends ConsumerState<RadioPage> {
                     );
                   },
                 ),
-                if (_selectedTag.isNotEmpty ||
-                    _selectedCountryCode.isNotEmpty ||
-                    _lastSearchText.isNotEmpty) ...[
+                if (_hasActiveSearch) ...[
                   const SizedBox(height: 8),
                   TextButton.icon(
                     onPressed: _clearFilters,
@@ -341,6 +353,20 @@ class _RadioPageState extends ConsumerState<RadioPage> {
             }
 
             final stations = snapshot.data ?? const <RadioStation>[];
+            if (stations.isEmpty &&
+                stationDirectoryIsSearchFirst &&
+                !_hasActiveSearch) {
+              return SliverFillRemaining(
+                hasScrollBody: false,
+                child: _RadioMessage(
+                  icon: Icons.travel_explore_rounded,
+                  message: LocaleKeys.station_search_prompt.tr(),
+                  actionLabel: LocaleKeys.station_add_by_url.tr(),
+                  onAction: () => showAddStationDialog(context, ref),
+                ),
+              );
+            }
+
             if (stations.isEmpty) {
               return SliverFillRemaining(
                 hasScrollBody: false,

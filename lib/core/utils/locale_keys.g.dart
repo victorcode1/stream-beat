@@ -354,6 +354,11 @@ abstract class LocaleKeys {
   static const station_broadcasters = 'station_broadcasters';
   static const station_directory_attribution = 'station_directory_attribution';
   static const station_add = 'station_add';
+  static const player_home_title = 'player_home_title';
+  static const player_home_intro = 'player_home_intro';
+  static const station_search_prompt = 'station_search_prompt';
+  static const station_search_directory = 'station_search_directory';
+  static const station_add_by_url = 'station_add_by_url';
   static const station_name = 'station_name';
   static const station_name_required = 'station_name_required';
   static const station_stream_url = 'station_stream_url';

@@ -6,7 +6,9 @@ import 'package:flow_music/core/utils/locale_keys.g.dart';
 import 'package:flow_music/features/home/presentation/providers/text_search.dart';
 import 'package:flow_music/features/radio/data/models/radio_station.dart';
 import 'package:flow_music/features/radio/data/repositories/radio_browser_repository.dart';
+import 'package:flow_music/features/radio/domain/station_directory_mode.dart';
 import 'package:flow_music/features/radio/presentation/utils/play_radio_station.dart';
+import 'package:flow_music/features/radio/presentation/widgets/add_station_dialog.dart';
 import 'package:flow_music/features/radio/presentation/widgets/radio_playlist_actions.dart';
 import 'package:flow_music/features/radio/presentation/widgets/radio_station_tile.dart';
 import 'package:flow_music/features/settings/presentation/pages/station_rights_page.dart';
@@ -80,7 +82,8 @@ class _RadioStationSearchViewState
   }
 
   Future<List<RadioStation>> _fetchStations() {
-    if (_query.isEmpty && _countryCode.isEmpty) {
+    if (_isIdle) {
+      if (stationDirectoryIsSearchFirst) return Future.value(const []);
       return _repository.topStations(limit: 40).guarded();
     }
 
@@ -88,6 +91,8 @@ class _RadioStationSearchViewState
         .searchStations(name: _query, countryCode: _countryCode, limit: 60)
         .guarded();
   }
+
+  bool get _isIdle => _query.isEmpty && _countryCode.isEmpty;
 
   void _reload() {
     if (!mounted) return;
@@ -163,6 +168,17 @@ class _RadioStationSearchViewState
               }
 
               final stations = snapshot.data ?? const <RadioStation>[];
+              if (stations.isEmpty &&
+                  stationDirectoryIsSearchFirst &&
+                  _isIdle) {
+                return _SearchMessage(
+                  icon: Icons.travel_explore_rounded,
+                  message: LocaleKeys.station_search_prompt.tr(),
+                  actionLabel: LocaleKeys.station_add_by_url.tr(),
+                  onAction: () => showAddStationDialog(context, ref),
+                );
+              }
+
               if (stations.isEmpty) {
                 return _SearchMessage(
                   icon: Icons.search_off_rounded,

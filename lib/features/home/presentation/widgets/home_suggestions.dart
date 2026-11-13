@@ -1,10 +1,13 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flow_music/core/utils/locale_keys.g.dart';
 import 'package:flow_music/features/flow_mix/presentation/widgets/flow_mix_card.dart';
+import 'package:flow_music/features/history/data/playback_history_entry.dart';
 import 'package:flow_music/features/home/presentation/providers/home_suggestions_provider.dart';
 import 'package:flow_music/features/history/presentation/controllers/playback_history_controller.dart';
 import 'package:flow_music/features/radio/data/models/radio_station.dart';
+import 'package:flow_music/features/radio/domain/station_directory_mode.dart';
 import 'package:flow_music/features/radio/presentation/utils/play_radio_station.dart';
+import 'package:flow_music/features/radio/presentation/widgets/add_station_dialog.dart';
 import 'package:flow_music/shared/widgets/optimized_network_image.dart';
 import 'package:flow_music/shared/widgets/style_section_header.dart';
 import 'package:flutter/material.dart';
@@ -18,6 +21,7 @@ class HomeSuggestions extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    if (stationDirectoryIsSearchFirst) return const _PlayerHome();
     final suggestions = ref.watch(homeSuggestionsProvider);
     return suggestions.when(
       loading: () => const Center(child: CircularProgressIndicator.adaptive()),
@@ -80,21 +84,7 @@ class _DiscoverContent extends ConsumerWidget {
     final stationsById = {
       for (final station in stations) _stationId(station): station,
     };
-    final recent = playbackHistory
-        .map((entry) {
-          if (entry.stationData.isNotEmpty) {
-            try {
-              final station = RadioStation.fromJson(entry.stationData);
-              if (station.isPlayable) return station;
-            } catch (_) {
-              // A malformed legacy history item should not break Home.
-            }
-          }
-          return stationsById[entry.id];
-        })
-        .whereType<RadioStation>()
-        .take(4)
-        .toList(growable: false);
+    final recent = _recentStations(playbackHistory, stationsById);
     final more = stations.skip(1).take(6).toList(growable: false);
 
     void play(RadioStation station, List<RadioStation> queue) {
@@ -231,6 +221,99 @@ class _DiscoverContent extends ConsumerWidget {
 
   String _stationId(RadioStation station) =>
       station.stationUuid.isEmpty ? station.streamUrl : station.stationUuid;
+}
+
+List<RadioStation> _recentStations(
+  List<PlaybackHistoryEntry> history, [
+  Map<String, RadioStation> stationsById = const {},
+]) {
+  return history
+      .map((entry) {
+        if (entry.stationData.isNotEmpty) {
+          try {
+            final station = RadioStation.fromJson(entry.stationData);
+            if (station.isPlayable) return station;
+          } catch (_) {
+            // A malformed legacy history item should not break Home.
+          }
+        }
+        return stationsById[entry.id];
+      })
+      .whereType<RadioStation>()
+      .take(4)
+      .toList(growable: false);
+}
+
+/// Portada de iOS y macOS: un reproductor sin catálogo propio. Invita a
+/// buscar en el directorio público o a agregar un stream, y muestra lo que el
+/// usuario ya escuchó.
+class _PlayerHome extends ConsumerWidget {
+  const _PlayerHome();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final recent = _recentStations(
+      ref.watch(playbackHistoryControllerProvider),
+    );
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 32),
+      children: [
+        Text(
+          LocaleKeys.player_home_title.tr(),
+          style: theme.textTheme.displaySmall?.copyWith(
+            fontWeight: FontWeight.w900,
+            letterSpacing: -1.2,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          LocaleKeys.player_home_intro.tr(),
+          style: theme.textTheme.bodyLarge?.copyWith(
+            color: colors.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 20),
+        FilledButton.icon(
+          onPressed: () => context.go('/radio'),
+          icon: const Icon(Icons.search_rounded),
+          label: Text(LocaleKeys.station_search_directory.tr()),
+        ),
+        const SizedBox(height: 10),
+        OutlinedButton.icon(
+          onPressed: () => showAddStationDialog(context, ref),
+          icon: const Icon(Icons.add_link_rounded),
+          label: Text(LocaleKeys.station_add_by_url.tr()),
+        ),
+        if (recent.isNotEmpty) ...[
+          const SizedBox(height: 28),
+          StyleSectionHeader(title: LocaleKeys.recently_played.tr(), index: 0),
+          const SizedBox(height: 10),
+          for (final station in recent) ...[
+            _RecentStationCard(
+              station: station,
+              onTap: () => playRadioStation(
+                context: context,
+                ref: ref,
+                station: station,
+                queue: recent,
+                index: recent.indexOf(station),
+              ),
+            ),
+            const SizedBox(height: 10),
+          ],
+        ],
+        const SizedBox(height: 24),
+        OutlinedButton.icon(
+          onPressed: () => context.go('/favorites'),
+          icon: const Icon(Icons.favorite_border_rounded),
+          label: Text(LocaleKeys.view_my_favorite_stations.tr()),
+        ),
+      ],
+    );
+  }
 }
 
 class _FilterChip extends StatelessWidget {

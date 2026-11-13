@@ -5,6 +5,7 @@ import 'package:flow_music/features/daily_recommendations/domain/daily_recommend
 import 'package:flow_music/features/daily_recommendations/domain/repositories/daily_recommendation_repository.dart';
 import 'package:flow_music/features/home/data/home_suggestions_repository.dart';
 import 'package:flow_music/features/radio/data/models/radio_station.dart';
+import 'package:flow_music/features/radio/domain/station_directory_mode.dart';
 import 'package:flow_music/features/settings/data/settings_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -35,11 +36,11 @@ class LocalDailyRecommendationRepository
   Future<void>? _initialization;
   RadioStation? _initialStation;
 
+  /// Recomendar emisoras del directorio solo en Android: iOS no propone
+  /// emisoras por su cuenta (ver [stationDirectoryIsSearchFirst]).
   @override
   bool get isSupported =>
-      !kIsWeb &&
-      (defaultTargetPlatform == TargetPlatform.android ||
-          defaultTargetPlatform == TargetPlatform.iOS);
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
   @override
   bool get isEnabled {
