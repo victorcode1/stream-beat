@@ -28,6 +28,17 @@ Future<String> prepareRemoteAudioUrl({
 /// antes de empezar a reproducirla.
 class RemoteAudioProxy {
   HttpServer? _server;
+
+  /// Un solo cliente para todas las peticiones de AVPlayer: conserva las
+  /// conexiones con googlevideo abiertas entre rangos. Abrir una por rango
+  /// costaba un apreton de manos TLS (cientos de ms en datos moviles) en cada
+  /// peticion y en cada salto dentro de la cancion.
+  HttpClient? _client;
+
+  HttpClient get _upstreamClient => _client ??= HttpClient()
+    ..autoUncompress = false
+    ..idleTimeout = const Duration(seconds: 30)
+    ..maxConnectionsPerHost = 6;
   int _nextSourceId = 0;
   final Map<String, _RemoteAudioSource> _sources = {};
 
@@ -107,10 +118,12 @@ class RemoteAudioProxy {
             contentLength: source.contentLength,
           )
         : source.uri;
-    final upstreamClient = HttpClient()..autoUncompress = false;
 
     try {
-      final upstreamRequest = await upstreamClient.openUrl(method, upstreamUri);
+      final upstreamRequest = await _upstreamClient.openUrl(
+        method,
+        upstreamUri,
+      );
       final upstreamHost = upstreamRequest.headers.value(
         HttpHeaders.hostHeader,
       );
@@ -176,15 +189,11 @@ class RemoteAudioProxy {
       if (method == 'HEAD') {
         await upstreamResponse.drain<void>();
       } else {
-        var localClosed = false;
-        localResponse.done.then((_) => localClosed = true);
-        await for (final chunk in upstreamResponse) {
-          if (localClosed) break;
-          localResponse.add(chunk);
-          await localResponse.flush();
-        }
+        // `addStream` respeta la contrapresion: si AVPlayer deja de leer,
+        // pausa la descarga en vez de acumular la cancion en memoria. Si el
+        // reproductor cierra la peticion, se cancela y se libera la conexion.
+        await localResponse.addStream(upstreamResponse);
       }
-      await localResponse.flush();
       await localResponse.close();
     } catch (error) {
       debugPrint('Remote audio proxy request failed: $error');
@@ -194,13 +203,13 @@ class RemoteAudioProxy {
       } catch (_) {
         // El reproductor cerro la solicitud al cambiar de cancion.
       }
-    } finally {
-      upstreamClient.close(force: true);
     }
   }
 
   Future<void> close() async {
     _sources.clear();
+    _client?.close(force: true);
+    _client = null;
     final server = _server;
     _server = null;
     await server?.close(force: true);

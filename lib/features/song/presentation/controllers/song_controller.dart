@@ -10,6 +10,7 @@ import 'package:flow_music/core/utils/main_controller.dart';
 import 'package:flow_music/features/autoplay/data/audio_cache_stub.dart'
     if (dart.library.io) 'package:flow_music/features/autoplay/data/audio_cache_io.dart';
 import 'package:flow_music/features/autoplay/data/resolved_audio.dart';
+import 'package:flow_music/features/autoplay/data/shared_youtube_client.dart';
 import 'package:flow_music/features/autoplay/data/youtube_access_state.dart';
 import 'package:flow_music/features/autoplay/data/youtube_playback_stream.dart';
 import 'package:flow_music/features/autoplay/presentation/controllers/autoplay_queue_controller.dart';
@@ -536,17 +537,18 @@ class SongController extends ChangeNotifier {
       if (!_isCurrentPlaybackRequest(generation)) return;
       _videoPlayerController = null;
 
-      YoutubeExplode? yt;
       try {
-        yt = YoutubeExplode();
-
-        // Get video info
-        final videoInfo = await yt.videos.get(videoId);
+        // Metadatos y manifiesto en paralelo con el cliente compartido: en
+        // serie y con un cliente nuevo tardaban unos 3 s antes de sonar.
+        final yt = sharedYoutubeExplode;
+        final videoInfoFuture = yt.videos.get(videoId);
+        final manifestFuture = yt.videos.streamsClient.getManifest(videoId);
+        // Evita un error no atendido si el manifiesto falla antes.
+        unawaited(videoInfoFuture.then((_) {}, onError: (Object _) {}));
+        final manifest = await manifestFuture;
+        final videoInfo = await videoInfoFuture;
         if (!_isCurrentPlaybackRequest(generation)) return;
         _videoInfo = videoInfo;
-
-        final manifest = await yt.videos.streamsClient.getManifest(videoId);
-        if (!_isCurrentPlaybackRequest(generation)) return;
         final playbackStream = pickYoutubePlaybackStream(
           manifest,
           preferMuxed: _isApplePlatform,
@@ -597,8 +599,6 @@ class SongController extends ChangeNotifier {
         );
         if (!fallbackStarted) rethrow;
         debugPrint('Audio player started via Piped fallback');
-      } finally {
-        yt?.close();
       }
 
       if (!_isCurrentPlaybackRequest(generation)) return;

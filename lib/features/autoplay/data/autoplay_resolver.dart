@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flow_music/features/autoplay/data/resolved_audio.dart';
+import 'package:flow_music/features/autoplay/data/shared_youtube_client.dart';
 import 'package:flow_music/features/autoplay/data/youtube_playback_stream.dart';
 import 'package:flow_music/features/autoplay/data/youtube_access_state.dart';
 import 'package:flow_music/features/search/data/models/youtube_search_suggestion.dart';
@@ -51,37 +52,33 @@ Future<ResolvedAudio?> _tryResolveViaYoutubeExplode(
 Future<ResolvedAudio?> _resolveViaYoutubeExplode(
   YouTubeSearchSuggestion suggestion,
 ) async {
-  final yt = YoutubeExplode();
-  try {
-    final video = await yt.videos.get(suggestion.videoId);
-    final manifest = await yt.videos.streamsClient.getManifest(
-      suggestion.videoId,
-    );
-    final playbackStream = pickYoutubePlaybackStream(
-      manifest,
-      preferMuxed: _isApplePlatform,
-    );
-    if (playbackStream == null) return null;
+  // El manifiesto ya trae la duracion en el parametro `dur` de la URL, y la
+  // sugerencia suele traerla tambien: pedir ademas los metadatos del video
+  // duplicaba la espera de cada pista precargada.
+  final manifest = await sharedYoutubeExplode.videos.streamsClient.getManifest(
+    suggestion.videoId,
+  );
+  final playbackStream = pickYoutubePlaybackStream(
+    manifest,
+    preferMuxed: _isApplePlatform,
+  );
+  if (playbackStream == null) return null;
 
-    return ResolvedAudio(
-      suggestion: suggestion,
-      audioUrl: playbackStream.url.toString(),
-      mimeType: '${playbackStream.codec.type}/${playbackStream.codec.subtype}',
-      requestHeaders: YoutubeHttpClient.defaultHeaders,
-      rangeEnd: playbackStream.size.totalBytes - 1,
-      fileExtension: playbackStream.container.name,
-      title: suggestion.displayText,
-      author: suggestion.channelTitle,
-      thumbnailUrl: suggestion.thumbnailUrl,
-      duration: _resolveAudioDuration(
-        streamUri: playbackStream.url,
-        knownDuration: suggestion.duration,
-        fallback: video.duration,
-      ),
-    );
-  } finally {
-    yt.close();
-  }
+  return ResolvedAudio(
+    suggestion: suggestion,
+    audioUrl: playbackStream.url.toString(),
+    mimeType: '${playbackStream.codec.type}/${playbackStream.codec.subtype}',
+    requestHeaders: YoutubeHttpClient.defaultHeaders,
+    rangeEnd: playbackStream.size.totalBytes - 1,
+    fileExtension: playbackStream.container.name,
+    title: suggestion.displayText,
+    author: suggestion.channelTitle,
+    thumbnailUrl: suggestion.thumbnailUrl,
+    duration: _resolveAudioDuration(
+      streamUri: playbackStream.url,
+      knownDuration: suggestion.duration,
+    ),
+  );
 }
 
 bool get _isApplePlatform =>

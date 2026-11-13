@@ -13,7 +13,8 @@ Future<FlowAudioHandler> initFlowAudioHandler() async {
   flowAudioHandler = await AudioService.init(
     builder: FlowAudioHandler.new,
     config: const AudioServiceConfig(
-      androidNotificationChannelId: 'com.victorflores.streambeatmusic.channel.audio',
+      androidNotificationChannelId:
+          'com.victorflores.streambeatmusic.channel.audio',
       androidNotificationChannelName: 'Reproduccion de audio',
       androidNotificationChannelDescription:
           'Controles de reproduccion de StreamBeat',
@@ -28,8 +29,20 @@ Future<FlowAudioHandler> initFlowAudioHandler() async {
   return flowAudioHandler;
 }
 
+/// Cada cuanto se consulta la posicion al reproductor nativo.
+///
+/// `audioplayers` la consulta por defecto en cada fotograma: hasta 120 llamadas
+/// por segundo al canal nativo en pantallas de 120 Hz, que ademas obligan a
+/// Flutter a dibujar sin parar y reconstruyen los reproductores en cada una.
+/// Cuatro veces por segundo basta para la barra de progreso y el fundido.
+const Duration positionUpdateInterval = Duration(milliseconds: 250);
+
 class FlowAudioHandler extends BaseAudioHandler with SeekHandler {
   FlowAudioHandler() {
+    player.positionUpdater = TimerPositionUpdater(
+      interval: positionUpdateInterval,
+      getPosition: player.getCurrentPosition,
+    );
     _subscriptions.add(
       player.onPlayerStateChanged.listen((state) {
         _playerState = state;
