@@ -109,6 +109,7 @@ class ModernPlayerHero extends StatelessWidget {
     required this.forward,
     required this.isBusy,
     required this.placeholder,
+    this.topInset = 0,
   });
 
   final String? thumbnailUrl;
@@ -118,6 +119,10 @@ class ModernPlayerHero extends StatelessWidget {
   /// La pista nueva aun se esta abriendo: se atenua y muestra el indicador.
   final bool isBusy;
   final Widget placeholder;
+
+  /// Alto de la barra superior que queda encima de la caratula. Ahi se pone
+  /// una sombra suave para que los iconos blancos se lean en caratulas claras.
+  final double topInset;
 
   @override
   Widget build(BuildContext context) {
@@ -148,6 +153,24 @@ class ModernPlayerHero extends StatelessWidget {
             ),
           ),
         ),
+        if (topInset > 0)
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: topInset * 1.5,
+            child: const IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Color(0x80000000), Color(0x00000000)],
+                  ),
+                ),
+              ),
+            ),
+          ),
         if (isBusy)
           Center(
             child: SizedBox.square(

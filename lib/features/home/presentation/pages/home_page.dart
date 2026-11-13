@@ -129,6 +129,9 @@ class _HomePageState extends ConsumerState<HomePage> {
 
     final shell = Scaffold(
       backgroundColor: Colors.transparent,
+      // Con el reproductor abierto la caratula sube por detras de la barra
+      // superior (transparente) hasta el borde de la pantalla.
+      extendBodyBehindAppBar: showNowPlayingDetails,
       // Configuracion ya trae su propia cabecera movil. La mantenemos dentro
       // de este shell para que la barra inferior no desaparezca al cambiar de
       // seccion, pero evitamos dibujar dos app bars.

@@ -245,6 +245,8 @@ class _ModernPlayerWidgetState extends State<ModernPlayerWidget> {
         // En movil, sin video, la caratula ocupa la parte de arriba de borde a
         // borde y se funde con el fondo ambiental que pinta la pagina, como
         // en Shazam. El video y el embed web conservan su presentacion.
+        // Alto de la barra superior cuando el cuerpo se dibuja detras de ella.
+        final topInset = MediaQuery.paddingOf(context).top;
         final showsHero =
             !usesWebEmbed &&
             !showColdLoader &&
@@ -259,15 +261,18 @@ class _ModernPlayerWidgetState extends State<ModernPlayerWidget> {
                     alignment: Alignment.topCenter,
                     child: SizedBox(
                       width: constraints.maxWidth,
+                      // La caratula arranca en el borde superior, por detras
+                      // de la barra: se suma ese alto para no recortarla.
                       height: constraints.maxHeight.clamp(
                         0.0,
-                        constraints.maxWidth * 1.05,
+                        constraints.maxWidth * 1.05 + topInset,
                       ),
                       child: ModernPlayerHero(
                         thumbnailUrl: widget.thumbnailUrl,
                         trackKey: trackKey,
                         forward: _forward,
                         isBusy: isBusy,
+                        topInset: topInset,
                         placeholder: ModernPlayerArtwork(
                           theme: theme,
                           borderRadius: 0,
@@ -283,56 +288,60 @@ class _ModernPlayerWidgetState extends State<ModernPlayerWidget> {
           );
         }
 
-        return Container(
-          decoration: BoxDecoration(
-            gradient: extras?.secondaryGradient,
-            color: extras == null ? theme.colorScheme.surface : null,
-          ),
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 300),
-            layoutBuilder: (currentChild, previousChildren) => Stack(
-              fit: StackFit.expand,
-              children: [...previousChildren, ?currentChild],
+        // El video y el cargador no van detras de la barra superior.
+        return Padding(
+          padding: EdgeInsets.only(top: topInset),
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: extras?.secondaryGradient,
+              color: extras == null ? theme.colorScheme.surface : null,
             ),
-            child: showColdLoader
-                ? Center(
-                    key: const ValueKey('modern-player-cold-loader'),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CircularProgressIndicator(
-                          color: theme.colorScheme.primary,
-                          strokeWidth: 3,
-                        ),
-                        const SizedBox(height: 20),
-                        Text(
-                          LocaleKeys.loading.tr(),
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            color: theme.colorScheme.onSurface.withValues(
-                              alpha: 0.7,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              layoutBuilder: (currentChild, previousChildren) => Stack(
+                fit: StackFit.expand,
+                children: [...previousChildren, ?currentChild],
+              ),
+              child: showColdLoader
+                  ? Center(
+                      key: const ValueKey('modern-player-cold-loader'),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          CircularProgressIndicator(
+                            color: theme.colorScheme.primary,
+                            strokeWidth: 3,
+                          ),
+                          const SizedBox(height: 20),
+                          Text(
+                            LocaleKeys.loading.tr(),
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              color: theme.colorScheme.onSurface.withValues(
+                                alpha: 0.7,
+                              ),
                             ),
                           ),
+                        ],
+                      ),
+                    )
+                  : Column(
+                      key: const ValueKey('modern-player-content'),
+                      children: [
+                        Expanded(
+                          child: ModernPlayerMediaDisplay(
+                            theme: theme,
+                            webEmbedVideoId: widget.webEmbedVideoId,
+                            videoController: widget.videoController,
+                            thumbnailUrl: widget.thumbnailUrl,
+                            trackKey: trackKey,
+                            forward: _forward,
+                            isBusy: isBusy,
+                          ),
                         ),
+                        if (!usesWebEmbed) controls,
                       ],
                     ),
-                  )
-                : Column(
-                    key: const ValueKey('modern-player-content'),
-                    children: [
-                      Expanded(
-                        child: ModernPlayerMediaDisplay(
-                          theme: theme,
-                          webEmbedVideoId: widget.webEmbedVideoId,
-                          videoController: widget.videoController,
-                          thumbnailUrl: widget.thumbnailUrl,
-                          trackKey: trackKey,
-                          forward: _forward,
-                          isBusy: isBusy,
-                        ),
-                      ),
-                      if (!usesWebEmbed) controls,
-                    ],
-                  ),
+            ),
           ),
         );
       },
