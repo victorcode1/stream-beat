@@ -1,11 +1,11 @@
 {
-    "name": "Flow Music",
-    "short_name": "Flow Music",
+    "name": "StreamBeat Music",
+    "short_name": "StreamBeat Music",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#101010",
     "theme_color": "#16B7B6",
-    "description": "Flow Music",
+    "description": "StreamBeat Music",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
