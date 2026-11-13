@@ -781,6 +781,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.1.2"
+  internet_connection_monitor:
+    dependency: "direct main"
+    description:
+      name: internet_connection_monitor
+      sha256: ebce84caaa22f326580dc9c292385ea751b2231d87144769d1a7e015f648eba1
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.1.2"
   intl:
     dependency: "direct main"
     description:

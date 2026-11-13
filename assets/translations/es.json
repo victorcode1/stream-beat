@@ -78,6 +78,7 @@
   "loading": "Cargando...",
   "error": "Ocurrió un error",
   "retry": "Reintentar",
+  "no_internet": "Sin Internet. Esperando que vuelva la conexión.",
   "no_id_song": "Sin ID de canción",
   "configure_source": "Configurar origen",
   "play_button": "Reproducir",
