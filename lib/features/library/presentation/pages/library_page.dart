@@ -183,7 +183,6 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
                   LibraryPlaylistsHeader(
                     onCreate: () => _createPlaylist(),
                     onImport: _importPlaylist,
-                    colors: colors,
                   ),
                   const SizedBox(height: 10),
                   LibrarySmartPlaylistActions(onCreate: _createSmartPlaylist),
@@ -202,7 +201,6 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
                       icon: Icons.playlist_add_rounded,
                       message: LocaleKeys.empty_playlists.tr(),
                       colors: colors,
-                      minHeight: 120,
                     )
                   else
                     ...visiblePlaylists.map(
@@ -219,16 +217,17 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
                         ),
                       ),
                     ),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 28),
                   LibrarySectionHeader(
                     title: LocaleKeys.favorite_stations.tr(),
-                    trailing: TextButton.icon(
+                    index: 1,
+                    trailing: IconButton.filledTonal(
                       onPressed: () => showCreateRadioPlaylistFlow(
                         context: context,
                         ref: ref,
                       ),
                       icon: const Icon(Icons.add_rounded),
-                      label: Text(LocaleKeys.new_radio_playlist.tr()),
+                      tooltip: LocaleKeys.new_radio_playlist.tr(),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -269,8 +268,11 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
                         ),
                       );
                     }),
-                  const SizedBox(height: 18),
-                  LibrarySectionHeader(title: LocaleKeys.radio_playlists.tr()),
+                  const SizedBox(height: 28),
+                  LibrarySectionHeader(
+                    title: LocaleKeys.radio_playlists.tr(),
+                    index: 2,
+                  ),
                   const SizedBox(height: 12),
                   if (visibleRadioPlaylists.isEmpty)
                     LibraryEmptyCard(
@@ -298,15 +300,12 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
                         ),
                       ),
                     ),
-                  const SizedBox(height: 18),
-                  Text(
-                    LocaleKeys.offline_library.tr(),
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: colors.onSurface,
-                    ),
+                  const SizedBox(height: 28),
+                  LibrarySectionHeader(
+                    title: LocaleKeys.offline_library.tr(),
+                    index: 3,
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 8),
                   if (visibleOffline.isEmpty)
                     LibraryEmptyCard(
                       icon: Icons.offline_bolt_rounded,
@@ -315,48 +314,38 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
                     )
                   else
                     ...visibleOffline.map(
-                      (audio) => Padding(
-                        padding: const EdgeInsets.only(bottom: 14),
-                        child: LibraryDownloadedAudioTile(
-                          audio: audio,
-                          subtitle: LocaleKeys.offline_available.tr(),
-                          deleteLabel: LocaleKeys.remove_offline.tr(),
-                          onTap: () => _openPlayer(audio),
-                          onAddToPlaylist: () => _showAddToPlaylist(audio),
-                          onDelete: () => _confirmDeleteOffline(audio),
-                        ),
+                      (audio) => LibraryDownloadedAudioTile(
+                        audio: audio,
+                        subtitle: LocaleKeys.offline_available.tr(),
+                        deleteLabel: LocaleKeys.remove_offline.tr(),
+                        onTap: () => _openPlayer(audio),
+                        onAddToPlaylist: () => _showAddToPlaylist(audio),
+                        onDelete: () => _confirmDeleteOffline(audio),
                       ),
                     ),
-                  const SizedBox(height: 18),
-                  Text(
-                    LocaleKeys.downloaded_files.tr(),
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: colors.onSurface,
-                    ),
+                  const SizedBox(height: 28),
+                  LibrarySectionHeader(
+                    title: LocaleKeys.downloaded_files.tr(),
+                    index: 4,
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 8),
                   if (visibleDownloads.isEmpty)
                     LibraryEmptyCard(
                       icon: Icons.folder_off_rounded,
                       message: LocaleKeys.no_downloaded_files.tr(),
                       colors: colors,
-                      minHeight: 220,
                     )
                   else
                     ...visibleDownloads.map(
-                      (audio) => Padding(
-                        padding: const EdgeInsets.only(bottom: 14),
-                        child: LibraryDownloadedAudioTile(
-                          audio: audio,
-                          onTap: () => _openPlayer(audio),
-                          fallbackSubtitle: LibraryPage.pageController
-                              .mediaTypeLabel(audio),
-                          onAddToPlaylist: () => _showAddToPlaylist(audio),
-                          onShare: () => _shareAudio(audio),
-                          onShowLocation: () => _showFileLocation(audio),
-                          onDelete: () => _confirmDelete(audio),
-                        ),
+                      (audio) => LibraryDownloadedAudioTile(
+                        audio: audio,
+                        onTap: () => _openPlayer(audio),
+                        fallbackSubtitle: LibraryPage.pageController
+                            .mediaTypeLabel(audio),
+                        onAddToPlaylist: () => _showAddToPlaylist(audio),
+                        onShare: () => _shareAudio(audio),
+                        onShowLocation: () => _showFileLocation(audio),
+                        onDelete: () => _confirmDelete(audio),
                       ),
                     ),
                 ],

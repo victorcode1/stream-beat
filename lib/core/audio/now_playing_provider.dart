@@ -17,3 +17,16 @@ String? _titleFromItem(MediaItem? item) {
   if (title == 'StreamBeat') return null;
   return title;
 }
+
+/// Id de lo que esta cargado en el reproductor (el videoId en canciones), para
+/// que las listas marquen la cancion activa.
+final nowPlayingIdProvider = StreamProvider<String?>((ref) {
+  return flowAudioHandler.mediaItem.map((item) => item?.id).distinct();
+});
+
+/// El reproductor esta sonando (no en pausa ni detenido).
+final nowPlayingIsPlayingProvider = StreamProvider<bool>((ref) {
+  return flowAudioHandler.playbackState
+      .map((state) => state.playing)
+      .distinct();
+});

@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 
+/// Aviso de seccion vacia: discreto, sin tarjeta, para que no compita con el
+/// contenido real de la Biblioteca.
 class LibraryEmptyCard extends StatelessWidget {
   const LibraryEmptyCard({
     super.key,
     required this.icon,
     required this.message,
     required this.colors,
-    this.minHeight = 160,
+    this.minHeight = 0,
   });
 
   final IconData icon;
@@ -18,28 +20,24 @@ class LibraryEmptyCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Container(
+    return ConstrainedBox(
       constraints: BoxConstraints(minHeight: minHeight),
-      alignment: Alignment.center,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        color: colors.surface,
-        border: Border.all(color: colors.outlineVariant),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 42, color: colors.primary),
-          const SizedBox(height: 12),
-          Text(
-            message,
-            textAlign: TextAlign.center,
-            style: theme.textTheme.titleMedium?.copyWith(
-              color: colors.onSurfaceVariant,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+        child: Row(
+          children: [
+            Icon(icon, size: 24, color: colors.onSurfaceVariant),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                message,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: colors.onSurfaceVariant,
+                ),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
