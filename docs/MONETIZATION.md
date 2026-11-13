@@ -264,3 +264,19 @@ que se buscan por nombre. Ese día se detuvo el lanzamiento en Play Console (los
 usuarios nuevos vuelven a recibir la 1.1.16) y la 1.1.18 (28) lo corrige con
 `android/app/src/main/res/raw/keep.xml`. Se verificó en el HONOR que la radio
 suena y que el despertador programa, suena a su hora y reproduce al tocarlo.
+
+## Envío de la 1.1.19 (30)
+
+El 12 de noviembre de 2026 se subió a Play Console el AAB 1.1.19 (30) como
+«1.1.19 (30) · Nuevo reproductor y aviso offline», en producción al 100 % y en
+todos los países, y se envió a revisión junto con la declaración de estado de
+comerciante a nivel de la app (sí se aplica). Incluye el reproductor con
+portada a todo lo ancho, las ondas de reproducción y el aviso «Sin Internet»
+de `internet_connection_monitor`. Se compiló con Gradle 9.3.1 y AGP 9.1.1, y se
+comprobó en el APK de release que los recursos de `keep.xml` siguen presentes.
+No se pudo reproducir audio en el emulador porque su red no resolvía nombres:
+hay que verificar la radio en un teléfono cuando Google la publique.
+
+En iOS, la 1.1.19 (29) y la (30) se subieron solo a TestFlight. App Review
+mantiene rechazada la 1.1.15 por la guía 5.2.3 hasta adjuntar autorizaciones de
+las emisoras.
