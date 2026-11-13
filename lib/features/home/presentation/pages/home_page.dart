@@ -12,6 +12,7 @@ import 'package:flow_music/features/home/presentation/widgets/home_page_content.
 import 'package:flow_music/features/search/presentation/widgets/search_song.dart';
 import 'package:flow_music/features/song/presentation/widgets/mini_player.dart';
 import 'package:flow_music/features/song/presentation/widgets/modern_player_hero.dart';
+import 'package:flow_music/features/song/presentation/controllers/song_controller.dart';
 import 'package:flutter/material.dart' hide SearchDelegate;
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -63,6 +64,11 @@ class _HomePageState extends ConsumerState<HomePage> {
       child: widget.child,
       viewState: viewState,
       currentPath: currentPath,
+      isSongPlaying: ref.watch(
+        songController.select(
+          (controller) => controller.currentVideoId != null,
+        ),
+      ),
     );
     final showNowPlayingDetails = _pageController.shouldShowNowPlayingDetails(
       child: widget.child,

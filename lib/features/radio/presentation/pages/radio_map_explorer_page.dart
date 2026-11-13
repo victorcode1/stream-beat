@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:easy_localization/easy_localization.dart';
@@ -15,11 +16,74 @@ import 'package:flow_music/features/radio/presentation/controllers/radio_favorit
 import 'package:flow_music/features/radio/presentation/widgets/particles_fly.dart';
 import 'package:flow_music/features/radio/presentation/widgets/radio_playlist_actions.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 
 final RegExp _countryCodePattern = RegExp(r'^[A-Z]{2}$');
+const String _naturalEarthMapAsset =
+    'assets/maps/ne_110m_admin_0_countries.geojson';
+
+class _WorldPolygon {
+  const _WorldPolygon({required this.points, required this.holes});
+
+  final List<LatLng> points;
+  final List<List<LatLng>> holes;
+}
+
+Future<List<_WorldPolygon>> _loadWorldPolygons() async {
+  final source = await rootBundle.loadString(_naturalEarthMapAsset);
+  final collection = jsonDecode(source) as Map<String, dynamic>;
+  final features = collection['features'] as List<dynamic>? ?? const [];
+  final polygons = <_WorldPolygon>[];
+
+  for (final feature in features.whereType<Map<String, dynamic>>()) {
+    final geometry = feature['geometry'] as Map<String, dynamic>?;
+    if (geometry == null) continue;
+
+    final coordinates = geometry['coordinates'];
+    switch (geometry['type']) {
+      case 'Polygon':
+        _appendWorldPolygon(polygons, coordinates);
+      case 'MultiPolygon':
+        if (coordinates is List<dynamic>) {
+          for (final polygonCoordinates in coordinates) {
+            _appendWorldPolygon(polygons, polygonCoordinates);
+          }
+        }
+    }
+  }
+
+  return List.unmodifiable(polygons);
+}
+
+void _appendWorldPolygon(List<_WorldPolygon> polygons, dynamic rawCoordinates) {
+  if (rawCoordinates is! List<dynamic> || rawCoordinates.isEmpty) return;
+
+  final points = _decodeGeoJsonRing(rawCoordinates.first);
+  if (points.length < 3) return;
+
+  final holes = rawCoordinates
+      .skip(1)
+      .map(_decodeGeoJsonRing)
+      .where((ring) => ring.length >= 3)
+      .toList(growable: false);
+  polygons.add(_WorldPolygon(points: points, holes: holes));
+}
+
+List<LatLng> _decodeGeoJsonRing(dynamic rawRing) {
+  if (rawRing is! List<dynamic>) return const [];
+
+  return rawRing
+      .whereType<List<dynamic>>()
+      .where((pair) => pair.length >= 2)
+      .map(
+        (pair) =>
+            LatLng((pair[1] as num).toDouble(), (pair[0] as num).toDouble()),
+      )
+      .toList(growable: false);
+}
 
 String _countryFlagEmoji(String countryCode) {
   final normalized = countryCode.trim().toUpperCase();
@@ -806,7 +870,7 @@ class _RadioMapExplorerPageState extends ConsumerState<RadioMapExplorerPage> {
   }
 }
 
-class _GlobeMap extends StatelessWidget {
+class _GlobeMap extends StatefulWidget {
   const _GlobeMap({
     required this.mapController,
     required this.markers,
@@ -820,15 +884,25 @@ class _GlobeMap extends StatelessWidget {
   final void Function(MapCamera camera, bool hasGesture) onPositionChanged;
 
   @override
+  State<_GlobeMap> createState() => _GlobeMapState();
+}
+
+/// Dibuja los paises con el mapa de Natural Earth incluido en la app, sin
+/// depender de un proveedor de teselas en linea.
+class _GlobeMapState extends State<_GlobeMap> {
+  late final Future<List<_WorldPolygon>> _worldPolygons = _loadWorldPolygons();
+
+  @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final tileUrl = isDark
-        ? 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}.png'
-        : 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png';
     final mapBackground = isDark
         ? const Color(0xFF071A1B)
         : const Color(0xFFEAF7F8);
+    final landColor = isDark
+        ? const Color(0xFF164B4D)
+        : const Color(0xFFB5E1DE);
+    final borderColor = colors.primary.withValues(alpha: isDark ? 0.38 : 0.5);
 
     return Stack(
       clipBehavior: Clip.none,
@@ -868,7 +942,7 @@ class _GlobeMap extends StatelessWidget {
                     ),
                   ),
                   FlutterMap(
-                    mapController: mapController,
+                    mapController: widget.mapController,
                     options: MapOptions(
                       initialCenter: _RadioMapExplorerPageState._initialCenter,
                       initialZoom: _RadioMapExplorerPageState._initialZoom,
@@ -878,20 +952,56 @@ class _GlobeMap extends StatelessWidget {
                       interactionOptions: const InteractionOptions(
                         flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
                       ),
-                      onMapReady: onMapReady,
-                      onPositionChanged: onPositionChanged,
+                      onMapReady: widget.onMapReady,
+                      onPositionChanged: widget.onPositionChanged,
                     ),
                     children: [
-                      Opacity(
-                        opacity: isDark ? 0.9 : 0.93,
-                        child: TileLayer(
-                          urlTemplate: tileUrl,
-                          subdomains: const ['a', 'b', 'c', 'd'],
-                          userAgentPackageName: 'com.flowmusic.app',
+                      FutureBuilder<List<_WorldPolygon>>(
+                        future: _worldPolygons,
+                        builder: (context, snapshot) {
+                          final worldPolygons = snapshot.data;
+                          if (worldPolygons == null) {
+                            return const SizedBox.shrink();
+                          }
+
+                          return PolygonLayer<Object>(
+                            polygonLabels: false,
+                            drawInSingleWorld: true,
+                            polygons: worldPolygons
+                                .map(
+                                  (polygon) => Polygon<Object>(
+                                    points: polygon.points,
+                                    holePointsList: polygon.holes.isEmpty
+                                        ? null
+                                        : polygon.holes,
+                                    color: landColor,
+                                    borderColor: borderColor,
+                                    borderStrokeWidth: 0.55,
+                                  ),
+                                )
+                                .toList(growable: false),
+                          );
+                        },
+                      ),
+                      MarkerLayer(markers: widget.markers),
+                    ],
+                  ),
+                  const Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 20,
+                    child: IgnorePointer(
+                      child: Center(
+                        child: Text(
+                          'Natural Earth',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
-                      MarkerLayer(markers: markers),
-                    ],
+                    ),
                   ),
                   IgnorePointer(
                     child: DecoratedBox(

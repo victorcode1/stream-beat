@@ -54,13 +54,16 @@ class HomePageController {
     required Widget? child,
     required ViewState viewState,
     required String currentPath,
+    required bool isSongPlaying,
   }) {
     final hasAudio = nowPlayingTitle != null && nowPlayingTitle.isNotEmpty;
     return hasAudio &&
         (child != null || viewState is! PlaySong) &&
         child is! SongWidget &&
         currentPath != '/playSong' &&
-        currentPath != '/radio-map';
+        // El mapa tiene su propia tarjeta para la emisora que suena; con una
+        // cancion no muestra ningun control, asi que ahi si va el mini player.
+        (currentPath != '/radio-map' || isSongPlaying);
   }
 
   bool shouldShowNowPlayingDetails({
