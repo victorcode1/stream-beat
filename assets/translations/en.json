@@ -363,5 +363,11 @@
   "radio_alarm_saved": "Alarm set: rings {}",
   "radio_alarm_inexact": "Alarm on, but it may ring a few minutes late. Allow \"Alarms & reminders\" for StreamBeat in your phone settings.",
   "radio_alarm_permission_denied": "Turn on StreamBeat notifications to use the alarm.",
-  "radio_alarm_failed": "Couldn't set the alarm. Please try again."
+  "radio_alarm_failed": "Couldn't set the alarm. Please try again.",
+  "visual_style": "Visual style",
+  "visual_style_always_dark": "This style is always dark.",
+  "visual_style_mola_desc": "Layers of color on black, like a Guna mola.",
+  "visual_style_clasico_desc": "The original design, with your accent color.",
+  "visual_style_monocromo_desc": "Fine grays and a single accent.",
+  "visual_style_carteles_desc": "Fluorescent on black, like dance posters."
 }

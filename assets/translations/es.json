@@ -363,5 +363,11 @@
   "radio_alarm_saved": "Despertador listo: sonará el {}",
   "radio_alarm_inexact": "Despertador activado, pero puede sonar unos minutos tarde. Permite «Alarmas y recordatorios» para StreamBeat en los ajustes del teléfono.",
   "radio_alarm_permission_denied": "Activa las notificaciones de StreamBeat para usar el despertador.",
-  "radio_alarm_failed": "No se pudo programar el despertador. Inténtalo de nuevo."
+  "radio_alarm_failed": "No se pudo programar el despertador. Inténtalo de nuevo.",
+  "visual_style": "Estilo visual",
+  "visual_style_always_dark": "Este estilo siempre se ve en oscuro.",
+  "visual_style_mola_desc": "Capas de color sobre negro, como una mola guna.",
+  "visual_style_clasico_desc": "El diseño de siempre, con tu color de acento.",
+  "visual_style_monocromo_desc": "Grises finos y un solo acento.",
+  "visual_style_carteles_desc": "Flúor sobre negro, como los afiches de baile."
 }

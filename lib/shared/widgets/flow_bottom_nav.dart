@@ -1,3 +1,4 @@
+import 'package:flow_music/core/theme/visual_style.dart';
 import 'package:flutter/material.dart';
 
 /// Destino de la barra de navegacion inferior de StreamBeat.
@@ -30,9 +31,10 @@ class FlowBottomNav extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
+    final inverted = _isInverted(context);
 
     return Material(
-      color: colors.surface,
+      color: inverted ? Colors.black : colors.surface,
       child: SafeArea(
         top: false,
         child: Container(
@@ -40,7 +42,9 @@ class FlowBottomNav extends StatelessWidget {
           decoration: BoxDecoration(
             border: Border(
               top: BorderSide(
-                color: colors.outlineVariant.withValues(alpha: 0.6),
+                color: inverted
+                    ? Colors.white.withValues(alpha: 0.1)
+                    : colors.outlineVariant.withValues(alpha: 0.6),
                 width: 1,
               ),
             ),
@@ -67,7 +71,11 @@ class _FlowNavItem extends StatelessWidget {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final selected = destination.selected;
-    final color = selected ? colors.primary : colors.onSurfaceVariant;
+    final color = _isInverted(context)
+        ? Colors.white.withValues(alpha: selected ? 1 : 0.6)
+        : selected
+        ? colors.primary
+        : colors.onSurfaceVariant;
 
     return InkWell(
       onTap: destination.onTap,
@@ -100,4 +108,10 @@ class _FlowNavItem extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Monocromo lleva la barra siempre negra con iconos blancos, en modo claro
+/// y oscuro; el destino activo se distingue por el blanco pleno.
+bool _isInverted(BuildContext context) {
+  return context.styleTokens.style == VisualStyle.monocromo;
 }

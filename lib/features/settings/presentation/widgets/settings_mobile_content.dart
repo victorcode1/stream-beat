@@ -9,9 +9,11 @@ import 'package:flow_music/features/settings/presentation/controllers/accent_col
 import 'package:flow_music/features/settings/presentation/controllers/autoplay_enabled_controller.dart';
 import 'package:flow_music/features/settings/presentation/controllers/settings_page_controller.dart';
 import 'package:flow_music/features/settings/presentation/controllers/theme_mode_controller.dart';
+import 'package:flow_music/features/settings/presentation/controllers/visual_style_controller.dart';
 import 'package:flow_music/features/settings/presentation/pages/station_rights_page.dart';
 import 'package:flow_music/features/settings/presentation/widgets/accent_color_palette.dart';
 import 'package:flow_music/features/settings/presentation/widgets/developer_contact_card.dart';
+import 'package:flow_music/features/settings/presentation/widgets/visual_style_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
@@ -32,6 +34,10 @@ class SettingsMobileContent extends ConsumerWidget {
     final themeModeController = ref.read(themeModeControllerProvider.notifier);
     final accent = ref.watch(accentColorControllerProvider);
     final accentController = ref.read(accentColorControllerProvider.notifier);
+    final visualStyle = ref.watch(visualStyleControllerProvider);
+    final visualStyleController = ref.read(
+      visualStyleControllerProvider.notifier,
+    );
     final autoplayEnabled = ref.watch(autoplayEnabledControllerProvider);
     final autoplayController = ref.read(
       autoplayEnabledControllerProvider.notifier,
@@ -65,16 +71,36 @@ class SettingsMobileContent extends ConsumerWidget {
                   icon: Icons.wb_sunny_rounded,
                   title: LocaleKeys.theme_and_appearance.tr(),
                 ),
-                const SizedBox(height: 18),
-                _ThemeModeSelector(
-                  current: themeMode,
-                  onSelected: themeModeController.setMode,
+                const SizedBox(height: 14),
+                Text(
+                  LocaleKeys.visual_style.tr(),
+                  style: theme.textTheme.titleSmall,
+                ),
+                const SizedBox(height: 6),
+                VisualStyleSelector(
+                  current: visualStyle,
+                  onSelected: visualStyleController.setStyle,
                 ),
                 const SizedBox(height: 18),
-                AccentColorPalette(
-                  current: accent,
-                  onSelected: accentController.setAccent,
-                ),
+                // Mola y Carteles son mundos oscuros con su propio color: la
+                // apariencia y el acento solo aplican a Clasico y Monocromo.
+                if (visualStyle.alwaysDark)
+                  Text(
+                    LocaleKeys.visual_style_always_dark.tr(),
+                    style: theme.textTheme.bodySmall,
+                  )
+                else
+                  _ThemeModeSelector(
+                    current: themeMode,
+                    onSelected: themeModeController.setMode,
+                  ),
+                if (visualStyle.usesAccent) ...[
+                  const SizedBox(height: 18),
+                  AccentColorPalette(
+                    current: accent,
+                    onSelected: accentController.setAccent,
+                  ),
+                ],
               ],
             ),
           ),

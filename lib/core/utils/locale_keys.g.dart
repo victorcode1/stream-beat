@@ -378,4 +378,10 @@ abstract class LocaleKeys {
   static const radio_alarm_inexact = 'radio_alarm_inexact';
   static const radio_alarm_permission_denied = 'radio_alarm_permission_denied';
   static const radio_alarm_failed = 'radio_alarm_failed';
+  static const visual_style = 'visual_style';
+  static const visual_style_always_dark = 'visual_style_always_dark';
+  static const visual_style_mola_desc = 'visual_style_mola_desc';
+  static const visual_style_clasico_desc = 'visual_style_clasico_desc';
+  static const visual_style_monocromo_desc = 'visual_style_monocromo_desc';
+  static const visual_style_carteles_desc = 'visual_style_carteles_desc';
 }

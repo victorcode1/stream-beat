@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+
+import 'visual_style.dart';
 
 class FlowThemeExtras extends ThemeExtension<FlowThemeExtras> {
   final LinearGradient primaryGradient;
@@ -70,13 +73,165 @@ class CustomTheme {
   /// Acento por defecto (verde esmeralda) cuando no se especifica otro.
   static const Color _defaultAccent = Color(0xFF10B981);
 
-  /// Tema claro de la app con el [accent] dado.
-  static ThemeData light([Color accent = _defaultAccent]) =>
-      _buildTheme(Brightness.light, accent);
+  /// Tema claro de la app con el [accent] y el [style] dados. Los estilos que
+  /// son mundos oscuros (Mola, Carteles) devuelven siempre su version oscura.
+  static ThemeData light([
+    Color accent = _defaultAccent,
+    VisualStyle style = VisualStyle.clasico,
+  ]) => _buildTheme(
+    style.alwaysDark ? Brightness.dark : Brightness.light,
+    accent,
+    style,
+  );
 
-  /// Tema oscuro de la app con el [accent] dado.
-  static ThemeData dark([Color accent = _defaultAccent]) =>
-      _buildTheme(Brightness.dark, accent);
+  /// Tema oscuro de la app con el [accent] y el [style] dados.
+  static ThemeData dark([
+    Color accent = _defaultAccent,
+    VisualStyle style = VisualStyle.clasico,
+  ]) => _buildTheme(Brightness.dark, accent, style);
+
+  // Mola: telas de color en capas sobre un negro calido.
+  static const Color _molaRed = Color(0xFFE23B2E);
+  static const Color _molaOrange = Color(0xFFF2892B);
+  static const Color _molaTurquoise = Color(0xFF1FB8A6);
+  static const Color _molaYellow = Color(0xFFF6C343);
+
+  // Carteles: papel fluorescente sobre negro.
+  static const Color _postersYellow = Color(0xFFF7E733);
+  static const Color _postersPink = Color(0xFFFF3EA5);
+  static const Color _postersGreen = Color(0xFF3DF56E);
+
+  static FlowStyleTokens _tokens(VisualStyle style) {
+    return switch (style) {
+      VisualStyle.mola => const FlowStyleTokens(
+        style: VisualStyle.mola,
+        cardRadius: 14,
+        contourColors: [_molaRed, _molaOrange, _molaTurquoise],
+        sectionColors: [_molaOrange, _molaTurquoise, _molaRed, _molaYellow],
+        uppercaseHeadings: false,
+      ),
+      VisualStyle.carteles => const FlowStyleTokens(
+        style: VisualStyle.carteles,
+        cardRadius: 2,
+        contourColors: [],
+        sectionColors: [_postersYellow, _postersPink, _postersGreen],
+        uppercaseHeadings: true,
+      ),
+      VisualStyle.monocromo => const FlowStyleTokens(
+        style: VisualStyle.monocromo,
+        cardRadius: 12,
+        contourColors: [],
+        sectionColors: [],
+        uppercaseHeadings: false,
+      ),
+      VisualStyle.clasico => const FlowStyleTokens(
+        style: VisualStyle.clasico,
+        cardRadius: 24,
+        contourColors: [],
+        sectionColors: [],
+        uppercaseHeadings: false,
+      ),
+    };
+  }
+
+  static ColorScheme _molaScheme() {
+    return ColorScheme.fromSeed(
+      seedColor: _molaRed,
+      brightness: Brightness.dark,
+    ).copyWith(
+      primary: _molaRed,
+      onPrimary: Colors.white,
+      primaryContainer: const Color(0xFF4A1712),
+      onPrimaryContainer: const Color(0xFFFFDAD3),
+      secondary: _molaOrange,
+      onSecondary: const Color(0xFF1C0F05),
+      tertiary: _molaTurquoise,
+      onTertiary: const Color(0xFF00201C),
+      error: const Color(0xFFFF8A80),
+      surface: const Color(0xFF120D0B),
+      surfaceDim: const Color(0xFF0C0807),
+      surfaceBright: const Color(0xFF2E211C),
+      surfaceContainerLowest: const Color(0xFF0C0807),
+      surfaceContainerLow: const Color(0xFF1A1311),
+      surfaceContainer: const Color(0xFF211815),
+      surfaceContainerHigh: const Color(0xFF2A1E1A),
+      surfaceContainerHighest: const Color(0xFF34251F),
+      onSurface: const Color(0xFFF7EDE6),
+      onSurfaceVariant: const Color(0xFFCDB7AC),
+      outline: const Color(0xFF5A3A30),
+      outlineVariant: const Color(0xFF3A2721),
+      surfaceTint: Colors.transparent,
+    );
+  }
+
+  static ColorScheme _postersScheme() {
+    return ColorScheme.fromSeed(
+      seedColor: _postersYellow,
+      brightness: Brightness.dark,
+    ).copyWith(
+      primary: _postersYellow,
+      onPrimary: const Color(0xFF0A0A0A),
+      primaryContainer: const Color(0xFF3A3608),
+      onPrimaryContainer: _postersYellow,
+      secondary: _postersPink,
+      onSecondary: const Color(0xFF0A0A0A),
+      tertiary: _postersGreen,
+      onTertiary: const Color(0xFF0A0A0A),
+      surface: const Color(0xFF0A0A0A),
+      surfaceDim: const Color(0xFF050505),
+      surfaceBright: const Color(0xFF262626),
+      surfaceContainerLowest: const Color(0xFF050505),
+      surfaceContainerLow: const Color(0xFF111111),
+      surfaceContainer: const Color(0xFF161616),
+      surfaceContainerHigh: const Color(0xFF1E1E1E),
+      surfaceContainerHighest: const Color(0xFF282828),
+      onSurface: const Color(0xFFFAFAF5),
+      onSurfaceVariant: const Color(0xFFBDBDB4),
+      outline: const Color(0xFF3A3A3A),
+      outlineVariant: const Color(0xFF242424),
+      surfaceTint: Colors.transparent,
+    );
+  }
+
+  /// Monocromo: la escala neutra manda y el acento solo marca la accion.
+  static ColorScheme _monoScheme(Brightness brightness, Color accent) {
+    final isDark = brightness == Brightness.dark;
+    final ink = isDark ? const Color(0xFFF2F2F3) : const Color(0xFF0B0B0C);
+    final muted = isDark ? const Color(0xFF9A9AA0) : const Color(0xFF5E5E64);
+    return ColorScheme.fromSeed(
+      seedColor: accent,
+      brightness: brightness,
+      dynamicSchemeVariant: DynamicSchemeVariant.monochrome,
+    ).copyWith(
+      primary: accent,
+      onPrimary: Colors.white,
+      secondary: muted,
+      tertiary: muted,
+      surface: isDark ? const Color(0xFF0B0B0C) : const Color(0xFFFFFFFF),
+      surfaceContainerLowest: isDark
+          ? const Color(0xFF070708)
+          : const Color(0xFFFFFFFF),
+      surfaceContainerLow: isDark
+          ? const Color(0xFF111113)
+          : const Color(0xFFF8F8F9),
+      surfaceContainer: isDark
+          ? const Color(0xFF161618)
+          : const Color(0xFFF2F2F3),
+      surfaceContainerHigh: isDark
+          ? const Color(0xFF1D1D20)
+          : const Color(0xFFEBEBED),
+      surfaceContainerHighest: isDark
+          ? const Color(0xFF26262A)
+          : const Color(0xFFE2E2E5),
+      onSurface: ink,
+      onSurfaceVariant: muted,
+      outline: isDark ? const Color(0xFF2C2C30) : const Color(0xFFD8D8DC),
+      outlineVariant: isDark
+          ? const Color(0xFF202023)
+          : const Color(0xFFE8E8EB),
+      surfaceTint: Colors.transparent,
+    );
+  }
 
   /// Aclara (amount > 0) u oscurece (amount < 0) un color hacia blanco/negro.
   static Color _shade(Color base, double amount) {
@@ -132,7 +287,64 @@ class CustomTheme {
     );
   }
 
-  static FlowThemeExtras _extras(Brightness brightness, Color accent) {
+  static FlowThemeExtras _extras(
+    Brightness brightness,
+    Color accent,
+    VisualStyle style,
+  ) {
+    switch (style) {
+      case VisualStyle.mola:
+        return const FlowThemeExtras(
+          primaryGradient: LinearGradient(
+            colors: [_molaRed, _molaOrange],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          // Tela de base: un negro calido apenas teñido de rojo arriba.
+          secondaryGradient: LinearGradient(
+            colors: [Color(0xFF1E1210), Color(0xFF120D0B), Color(0xFF0C0807)],
+            stops: [0, 0.45, 1],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+          glassBackground: Color(0x2EF7EDE6),
+          subtleStroke: Color(0x33CDB7AC),
+        );
+      case VisualStyle.carteles:
+        return const FlowThemeExtras(
+          primaryGradient: LinearGradient(
+            colors: [_postersYellow, _postersYellow],
+          ),
+          secondaryGradient: LinearGradient(
+            colors: [Color(0xFF0A0A0A), Color(0xFF0A0A0A)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+          glassBackground: Color(0x29FAFAF5),
+          subtleStroke: Color(0x33FAFAF5),
+        );
+      case VisualStyle.monocromo:
+        final isDark = brightness == Brightness.dark;
+        final ground = isDark
+            ? const Color(0xFF0B0B0C)
+            : const Color(0xFFFFFFFF);
+        return FlowThemeExtras(
+          primaryGradient: LinearGradient(colors: [accent, accent]),
+          secondaryGradient: LinearGradient(
+            colors: [ground, ground],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+          glassBackground: isDark
+              ? const Color(0x24FFFFFF)
+              : const Color(0x14000000),
+          subtleStroke: isDark
+              ? const Color(0x1FFFFFFF)
+              : const Color(0x14000000),
+        );
+      case VisualStyle.clasico:
+        break;
+    }
     // Gradiente firma derivado del acento: una version mas clara fluye hacia
     // una mas oscura del mismo color.
     final primaryGradient = LinearGradient(
@@ -183,7 +395,49 @@ class CustomTheme {
 
   /// Aplica las fuentes del diseno StreamBeat: Plus Jakarta Sans en toda la
   /// escala y Space Grotesk en los titulos display/headline/titleLarge.
-  static TextTheme _fontify(TextTheme base) {
+  static TextTheme _fontify(TextTheme base, {required VisualStyle style}) {
+    switch (style) {
+      case VisualStyle.mola:
+        // Titulos en Bricolage Grotesque, de trazo irregular como la tela
+        // recortada; el texto corrido queda en la fuente del sistema.
+        return base.copyWith(
+          displayLarge: GoogleFonts.bricolageGrotesque(
+            textStyle: base.displayLarge,
+          ),
+          headlineLarge: GoogleFonts.bricolageGrotesque(
+            textStyle: base.headlineLarge,
+          ),
+          headlineMedium: GoogleFonts.bricolageGrotesque(
+            textStyle: base.headlineMedium,
+          ),
+          headlineSmall: GoogleFonts.bricolageGrotesque(
+            textStyle: base.headlineSmall,
+          ),
+          titleLarge: GoogleFonts.bricolageGrotesque(
+            textStyle: base.titleLarge,
+          ),
+        );
+      case VisualStyle.carteles:
+        // Letra condensada de afiche en los titulos.
+        TextStyle? poster(TextStyle? style) => GoogleFonts.anton(
+          textStyle: style?.copyWith(
+            fontWeight: FontWeight.w400,
+            letterSpacing: 0.2,
+          ),
+        );
+        return base.copyWith(
+          displayLarge: poster(base.displayLarge),
+          headlineLarge: poster(base.headlineLarge),
+          headlineMedium: poster(base.headlineMedium),
+          headlineSmall: poster(base.headlineSmall),
+          titleLarge: poster(base.titleLarge),
+        );
+      case VisualStyle.monocromo:
+        // Todo en la fuente del sistema: la escala y el peso hacen el trabajo.
+        return base;
+      case VisualStyle.clasico:
+        break;
+    }
     final jakarta = GoogleFonts.plusJakartaSansTextTheme(base);
     return jakarta.copyWith(
       displayLarge: GoogleFonts.spaceGrotesk(textStyle: jakarta.displayLarge),
@@ -196,10 +450,21 @@ class CustomTheme {
     );
   }
 
-  static ThemeData _buildTheme(Brightness brightness, Color accent) {
+  static ThemeData _buildTheme(
+    Brightness brightness,
+    Color accent,
+    VisualStyle style,
+  ) {
     final isDark = brightness == Brightness.dark;
-    final colorScheme = _colorScheme(brightness, accent);
-    final extras = _extras(brightness, accent);
+    final colorScheme = switch (style) {
+      VisualStyle.mola => _molaScheme(),
+      VisualStyle.carteles => _postersScheme(),
+      VisualStyle.monocromo => _monoScheme(brightness, accent),
+      VisualStyle.clasico => _colorScheme(brightness, accent),
+    };
+    final extras = _extras(brightness, accent, style);
+    final tokens = _tokens(style);
+    final radius = tokens.cardRadius;
 
     final base = ThemeData(
       useMaterial3: true,
@@ -207,74 +472,78 @@ class CustomTheme {
       colorScheme: colorScheme,
       scaffoldBackgroundColor: Colors.transparent,
       textTheme: _fontify(
+        style: style,
         TextTheme(
           displayLarge: TextStyle(
-          fontSize: 52,
-          fontWeight: FontWeight.w800,
-          letterSpacing: -1.8,
-          color: colorScheme.onSurface,
-        ),
-        headlineLarge: TextStyle(
-          fontSize: 36,
-          fontWeight: FontWeight.w800,
-          letterSpacing: -1.0,
-          color: colorScheme.onSurface,
-        ),
-        headlineMedium: TextStyle(
-          fontSize: 30,
-          fontWeight: FontWeight.w700,
-          letterSpacing: -0.6,
-          color: colorScheme.onSurface,
-        ),
-        headlineSmall: TextStyle(
-          fontSize: 24,
-          fontWeight: FontWeight.w700,
-          letterSpacing: -0.3,
-          color: colorScheme.onSurface,
-        ),
-        titleLarge: TextStyle(
-          fontSize: 20,
-          fontWeight: FontWeight.w700,
-          letterSpacing: -0.2,
-          color: colorScheme.onSurface,
-        ),
-        titleMedium: TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.w600,
-          color: colorScheme.onSurface,
-        ),
-        titleSmall: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-          color: colorScheme.onSurface,
-        ),
-        bodyLarge: TextStyle(
-          fontSize: 16,
-          height: 1.5,
-          color: colorScheme.onSurface,
-        ),
-        bodyMedium: TextStyle(
-          fontSize: 14,
-          height: 1.5,
-          color: colorScheme.onSurfaceVariant,
-        ),
-        bodySmall: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant),
-        labelLarge: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.1,
-          color: colorScheme.onPrimary,
-        ),
-        labelMedium: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
-          color: colorScheme.onPrimary,
-        ),
-        labelSmall: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          color: colorScheme.onSurfaceVariant,
-        ),
+            fontSize: 52,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -1.8,
+            color: colorScheme.onSurface,
+          ),
+          headlineLarge: TextStyle(
+            fontSize: 36,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -1.0,
+            color: colorScheme.onSurface,
+          ),
+          headlineMedium: TextStyle(
+            fontSize: 30,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.6,
+            color: colorScheme.onSurface,
+          ),
+          headlineSmall: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.3,
+            color: colorScheme.onSurface,
+          ),
+          titleLarge: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.2,
+            color: colorScheme.onSurface,
+          ),
+          titleMedium: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: colorScheme.onSurface,
+          ),
+          titleSmall: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: colorScheme.onSurface,
+          ),
+          bodyLarge: TextStyle(
+            fontSize: 16,
+            height: 1.5,
+            color: colorScheme.onSurface,
+          ),
+          bodyMedium: TextStyle(
+            fontSize: 14,
+            height: 1.5,
+            color: colorScheme.onSurfaceVariant,
+          ),
+          bodySmall: TextStyle(
+            fontSize: 12,
+            color: colorScheme.onSurfaceVariant,
+          ),
+          labelLarge: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.1,
+            color: colorScheme.onPrimary,
+          ),
+          labelMedium: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: colorScheme.onPrimary,
+          ),
+          labelSmall: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: colorScheme.onSurfaceVariant,
+          ),
         ),
       ),
     );
@@ -282,6 +551,11 @@ class CustomTheme {
     return base.copyWith(
       visualDensity: VisualDensity.adaptivePlatformDensity,
       appBarTheme: AppBarTheme(
+        // Con fondo transparente Flutter supone un fondo oscuro y pone la
+        // hora y la bateria en blanco, invisibles en modo claro.
+        systemOverlayStyle: isDark
+            ? SystemUiOverlayStyle.light
+            : SystemUiOverlayStyle.dark,
         backgroundColor: Colors.transparent,
         foregroundColor: colorScheme.onSurface,
         elevation: 0,
@@ -296,7 +570,9 @@ class CustomTheme {
       cardTheme: CardThemeData(
         color: colorScheme.surfaceContainer,
         margin: EdgeInsets.zero,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(radius),
+        ),
         elevation: isDark ? 0 : 1,
         shadowColor: colorScheme.scrim.withValues(alpha: isDark ? 0.5 : 0.12),
       ),
@@ -440,7 +716,7 @@ class CustomTheme {
       cardColor: colorScheme.surfaceContainer,
       splashColor: colorScheme.primary.withValues(alpha: 0.12),
       highlightColor: Colors.transparent,
-      extensions: [extras],
+      extensions: [extras, tokens],
     );
   }
 }

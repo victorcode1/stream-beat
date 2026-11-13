@@ -1,29 +1,24 @@
+import 'package:flow_music/shared/widgets/style_section_header.dart';
 import 'package:flutter/material.dart';
 
+/// Titulo de seccion de la Biblioteca. Usa el mismo encabezado que el Inicio
+/// para que cada estilo visual (franjas Mola, bandas Carteles...) se repita.
 class LibrarySectionHeader extends StatelessWidget {
-  const LibrarySectionHeader({super.key, required this.title, this.trailing});
+  const LibrarySectionHeader({
+    super.key,
+    required this.title,
+    this.index = 0,
+    this.trailing,
+  });
 
   final String title;
+
+  /// Posicion de la seccion; elige el color de su tela.
+  final int index;
   final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
-
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            title,
-            style: theme.textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w800,
-              color: colors.onSurface,
-            ),
-          ),
-        ),
-        ?trailing,
-      ],
-    );
+    return StyleSectionHeader(title: title, index: index, trailing: trailing);
   }
 }

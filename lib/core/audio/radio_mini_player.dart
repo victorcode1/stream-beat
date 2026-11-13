@@ -6,6 +6,7 @@ import 'package:flow_music/features/radio/presentation/controllers/radio_queue_c
 import 'package:flow_music/features/radio/presentation/utils/play_radio_station.dart';
 import 'package:flow_music/shared/widgets/optimized_network_image.dart';
 import 'package:flow_music/shared/widgets/playing_bars_indicator.dart';
+import 'package:flow_music/shared/widgets/style_contour.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -41,85 +42,94 @@ class RadioMiniPlayer extends ConsumerWidget {
 
             return Padding(
               padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
-              child: Material(
-                color: colors.surfaceContainerHigh,
-                borderRadius: BorderRadius.circular(18),
-                clipBehavior: Clip.antiAlias,
-                child: InkWell(
-                  onTap: () => context.push('/radio-player'),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 8,
-                    ),
-                    child: Row(
-                      children: [
-                        _Artwork(
-                          artUri: item.artUri,
-                          isPlaying: isPlaying && !hasError,
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                item.title,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context).textTheme.titleSmall
-                                    ?.copyWith(fontWeight: FontWeight.w800),
-                              ),
-                              Text(
-                                hasError
-                                    ? LocaleKeys.radio_play_interrupted.tr()
-                                    : item.artist ?? 'Radio en directo',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context).textTheme.bodySmall
-                                    ?.copyWith(color: colors.onSurfaceVariant),
-                              ),
-                            ],
+              // En Mola, lo que suena lleva sus contornos de tela alrededor.
+              child: StyleContour(
+                radius: 18,
+                strokeWidth: 1.5,
+                gap: 2,
+                maxRings: 2,
+                child: Material(
+                  color: colors.surfaceContainerHigh,
+                  borderRadius: BorderRadius.circular(18),
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    onTap: () => context.push('/radio-player'),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 8,
+                      ),
+                      child: Row(
+                        children: [
+                          _Artwork(
+                            artUri: item.artUri,
+                            isPlaying: isPlaying && !hasError,
                           ),
-                        ),
-                        IconButton(
-                          tooltip: LocaleKeys.previous.tr(),
-                          onPressed: !isLoading && queue.hasPrevious
-                              ? () => playPreviousRadioStation(
-                                  context: context,
-                                  ref: ref,
-                                )
-                              : null,
-                          icon: const Icon(Icons.skip_previous_rounded),
-                        ),
-                        RadioMiniPlayerPrimaryControl(
-                          isLoading: isLoading,
-                          isPlaying: isPlaying,
-                          tooltip: isLoading
-                              ? LocaleKeys.loading.tr()
-                              : hasError
-                              ? LocaleKeys.retry.tr()
-                              : isPlaying
-                              ? LocaleKeys.pause.tr()
-                              : LocaleKeys.play.tr(),
-                          onPressed: isLoading
-                              ? null
-                              : () => isPlaying
-                                    ? flowAudioHandler.pause()
-                                    : flowAudioHandler.play(),
-                        ),
-                        IconButton(
-                          tooltip: LocaleKeys.next.tr(),
-                          onPressed: !isLoading && queue.hasNext
-                              ? () => playNextRadioStation(
-                                  context: context,
-                                  ref: ref,
-                                )
-                              : null,
-                          icon: const Icon(Icons.skip_next_rounded),
-                        ),
-                      ],
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  item.title,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: Theme.of(context).textTheme.titleSmall
+                                      ?.copyWith(fontWeight: FontWeight.w800),
+                                ),
+                                Text(
+                                  hasError
+                                      ? LocaleKeys.radio_play_interrupted.tr()
+                                      : item.artist ?? 'Radio en directo',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(
+                                        color: colors.onSurfaceVariant,
+                                      ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            tooltip: LocaleKeys.previous.tr(),
+                            onPressed: !isLoading && queue.hasPrevious
+                                ? () => playPreviousRadioStation(
+                                    context: context,
+                                    ref: ref,
+                                  )
+                                : null,
+                            icon: const Icon(Icons.skip_previous_rounded),
+                          ),
+                          RadioMiniPlayerPrimaryControl(
+                            isLoading: isLoading,
+                            isPlaying: isPlaying,
+                            tooltip: isLoading
+                                ? LocaleKeys.loading.tr()
+                                : hasError
+                                ? LocaleKeys.retry.tr()
+                                : isPlaying
+                                ? LocaleKeys.pause.tr()
+                                : LocaleKeys.play.tr(),
+                            onPressed: isLoading
+                                ? null
+                                : () => isPlaying
+                                      ? flowAudioHandler.pause()
+                                      : flowAudioHandler.play(),
+                          ),
+                          IconButton(
+                            tooltip: LocaleKeys.next.tr(),
+                            onPressed: !isLoading && queue.hasNext
+                                ? () => playNextRadioStation(
+                                    context: context,
+                                    ref: ref,
+                                  )
+                                : null,
+                            icon: const Icon(Icons.skip_next_rounded),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),

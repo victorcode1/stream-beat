@@ -4,6 +4,7 @@ import 'dart:ui' show ImageFilter;
 
 import 'package:audio_service/audio_service.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:flow_music/core/theme/player_dark_theme.dart';
 import 'package:flow_music/core/audio/audio_playing_provider.dart';
 import 'package:flow_music/core/audio/background_audio_handler.dart';
 import 'package:flow_music/core/sharing/station_share_service.dart';
@@ -52,6 +53,15 @@ class _RadioPlayerPageState extends ConsumerState<RadioPlayerPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Siempre oscuro: tambien cuando se abre fuera del shell (enlace
+    // compartido o recomendacion diaria).
+    return Theme(
+      data: playerOnDarkTheme(Theme.of(context)),
+      child: Builder(builder: _buildPage),
+    );
+  }
+
+  Widget _buildPage(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final radioQueue = ref.watch(radioQueueControllerProvider);

@@ -6,6 +6,7 @@ import 'package:flow_music/features/history/presentation/controllers/playback_hi
 import 'package:flow_music/features/radio/data/models/radio_station.dart';
 import 'package:flow_music/features/radio/presentation/utils/play_radio_station.dart';
 import 'package:flow_music/shared/widgets/optimized_network_image.dart';
+import 'package:flow_music/shared/widgets/style_section_header.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -167,21 +168,13 @@ class _DiscoverContent extends ConsumerWidget {
           FlowMixCard(countryCode: countryCode ?? ''),
           const SizedBox(height: 28),
           if (recent.isNotEmpty) ...[
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    LocaleKeys.recently_played.tr(),
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-                TextButton(
-                  onPressed: () => context.go('/radio'),
-                  child: Text(LocaleKeys.see_all.tr()),
-                ),
-              ],
+            StyleSectionHeader(
+              title: LocaleKeys.recently_played.tr(),
+              index: 0,
+              trailing: TextButton(
+                onPressed: () => context.go('/radio'),
+                child: Text(LocaleKeys.see_all.tr()),
+              ),
             ),
             const SizedBox(height: 10),
             SizedBox(
@@ -204,11 +197,9 @@ class _DiscoverContent extends ConsumerWidget {
           ),
           if (more.isNotEmpty) ...[
             const SizedBox(height: 22),
-            Text(
-              LocaleKeys.more_stations_for_you.tr(),
-              style: theme.textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
+            StyleSectionHeader(
+              title: LocaleKeys.more_stations_for_you.tr(),
+              index: 1,
             ),
             const SizedBox(height: 14),
             GridView.builder(

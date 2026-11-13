@@ -1,3 +1,4 @@
+import 'package:flow_music/core/theme/player_dark_theme.dart';
 import 'package:flow_music/core/audio/radio_mini_player.dart';
 import 'package:flow_music/core/utils/adaptive_layout.dart';
 import 'package:flow_music/features/home/presentation/providers/text_search.dart';
@@ -97,7 +98,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     TextEditingController searchController,
     Widget? pageContent,
   ) {
-    return Scaffold(
+    final shell = Scaffold(
       backgroundColor: Colors.transparent,
       // Configuracion y el reproductor traen su propia cabecera. Ambos viven
       // dentro de este shell para conservar la navegacion inferior.
@@ -111,6 +112,14 @@ class _HomePageState extends ConsumerState<HomePage> {
             ),
       body: HomePageContent(child: pageContent),
       bottomNavigationBar: HomeMobileBottomBar(currentPath: currentPath),
+    );
+
+    if (currentPath != '/radio-player') return shell;
+    // Con el reproductor abierto toda la pantalla pasa a oscuro (portada,
+    // barra inferior y hora del sistema), sea cual sea el estilo.
+    return ColoredBox(
+      color: const Color(0xFF0B0B0C),
+      child: Theme(data: playerOnDarkTheme(Theme.of(context)), child: shell),
     );
   }
 }

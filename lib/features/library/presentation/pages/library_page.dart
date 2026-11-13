@@ -23,8 +23,7 @@ class LibraryPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
+    final colors = Theme.of(context).colorScheme;
     final favorites = ref.watch(radioFavoritesControllerProvider);
     final playlists = ref.watch(radioPlaylistsControllerProvider);
     final searchController = ref.watch(searchProvider);
@@ -39,31 +38,21 @@ class LibraryPage extends ConsumerWidget {
         return ListView(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 32),
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    LocaleKeys.playlists.tr(),
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-                FilledButton.icon(
-                  onPressed: () =>
-                      showCreateRadioPlaylistFlow(context: context, ref: ref),
-                  icon: const Icon(Icons.add_rounded),
-                  label: Text(LocaleKeys.new_radio_playlist.tr()),
-                ),
-              ],
+            LibrarySectionHeader(
+              title: LocaleKeys.playlists.tr(),
+              trailing: IconButton.filledTonal(
+                onPressed: () =>
+                    showCreateRadioPlaylistFlow(context: context, ref: ref),
+                icon: const Icon(Icons.add_rounded),
+                tooltip: LocaleKeys.new_radio_playlist.tr(),
+              ),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 8),
             if (visiblePlaylists.isEmpty)
               LibraryEmptyCard(
                 icon: Icons.queue_music_rounded,
                 message: LocaleKeys.empty_radio_playlists.tr(),
                 colors: colors,
-                minHeight: 130,
               )
             else
               ...visiblePlaylists.map(
@@ -79,15 +68,10 @@ class LibraryPage extends ConsumerWidget {
                   ),
                 ),
               ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 28),
             LibrarySectionHeader(
               title: LocaleKeys.favorite_stations.tr(),
-              trailing: TextButton.icon(
-                onPressed: () =>
-                    showCreateRadioPlaylistFlow(context: context, ref: ref),
-                icon: const Icon(Icons.add_rounded),
-                label: Text(LocaleKeys.new_radio_playlist.tr()),
-              ),
+              index: 1,
             ),
             const SizedBox(height: 12),
             if (visibleFavorites.isEmpty)
@@ -128,7 +112,6 @@ class LibraryPage extends ConsumerWidget {
               icon: Icons.cloud_queue_rounded,
               message: LocaleKeys.library_saved_on_device.tr(),
               colors: colors,
-              minHeight: 120,
             ),
           ],
         );

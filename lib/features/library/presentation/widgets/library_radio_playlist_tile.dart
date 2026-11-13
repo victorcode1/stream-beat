@@ -1,4 +1,4 @@
-import 'package:flow_music/core/theme/custom_theme.dart';
+import 'package:flow_music/core/theme/visual_style.dart';
 import 'package:flow_music/features/radio/presentation/widgets/radio_playlist_actions.dart';
 import 'package:flutter/material.dart';
 
@@ -20,7 +20,7 @@ class LibraryRadioPlaylistTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
-    final extras = theme.extension<FlowThemeExtras>();
+    final radius = context.styleTokens.cardRadius.clamp(0.0, 16.0);
 
     return Dismissible(
       key: ValueKey('library-radio-playlist-$name-$itemCount'),
@@ -41,20 +41,16 @@ class LibraryRadioPlaylistTile extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
         onTap: onTap,
-        child: Ink(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            color: colors.surfaceContainerHigh,
-            border: Border.all(color: extras?.subtleStroke ?? colors.outline),
-          ),
-          padding: const EdgeInsets.all(14),
+        // Fila plana, igual que las canciones: sin tarjeta ni borde.
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
           child: Row(
             children: [
               Container(
-                width: 58,
-                height: 58,
+                width: 56,
+                height: 56,
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(radius),
                   color: colors.primary.withValues(alpha: 0.16),
                 ),
                 child: Icon(Icons.radio_rounded, color: colors.primary),
