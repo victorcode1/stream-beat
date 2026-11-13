@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flow_music/features/search/data/models/youtube_search_suggestion.dart';
 import 'package:flow_music/features/search/data/repositories/youtube_suggestions_repository.dart';
-import 'package:flow_music/features/search/presentation/providers/search_media_intent_query.dart';
+import 'package:flow_music/features/song/presentation/controllers/song_controller.dart';
 import 'package:flow_music/features/settings/presentation/controllers/default_playback_mode_controller.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -18,9 +18,9 @@ class SearchDataReq extends _$SearchDataReq {
       return const [];
     }
     final playbackMode = ref.watch(defaultPlaybackModeControllerProvider);
-    return fetchYouTubeSearchSuggestions(
-      buildSearchQueryWithMediaIntent(search, playbackMode),
-      source: 'SearchDataReq',
+    return searchSongsAndVideos(
+      search,
+      includeMusic: playbackMode == PlaybackMode.audio,
     );
   }
 
@@ -36,9 +36,9 @@ class SearchDataReq extends _$SearchDataReq {
     state = const AsyncValue.loading();
     final playbackMode = ref.read(defaultPlaybackModeControllerProvider);
     state = await AsyncValue.guard(
-      () async => fetchYouTubeSearchSuggestions(
-        buildSearchQueryWithMediaIntent(currentSearch, playbackMode),
-        source: 'SearchDataReq.reload',
+      () async => searchSongsAndVideos(
+        currentSearch,
+        includeMusic: playbackMode == PlaybackMode.audio,
       ),
     );
   }

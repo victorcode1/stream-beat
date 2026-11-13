@@ -18,12 +18,27 @@ class YouTubeSearchPageParser {
     String html, {
     int limit = 12,
   }) {
-    final initialData = _extractInitialData(html);
+    return parseSuggestionsFromData(_extractInitialData(html), limit: limit);
+  }
+
+  /// Igual que [parseSuggestions], pero sobre el JSON ya decodificado (la
+  /// respuesta de la API `youtubei/v1/search`). Por defecto conserva el filtro
+  /// de 1 a 12 minutos que usa el autoplay; la busqueda del usuario lo relaja.
+  List<YouTubeSearchSuggestion> parseSuggestionsFromData(
+    Object? data, {
+    int limit = 12,
+    Duration? minDuration = _minSongDuration,
+    Duration? maxDuration = _maxSongDuration,
+  }) {
     final suggestions = <YouTubeSearchSuggestion>[];
     final seenVideoIds = <String>{};
 
-    for (final renderer in _collectVideoRenderers(initialData)) {
-      final suggestion = _parseSuggestion(renderer);
+    for (final renderer in _collectVideoRenderers(data)) {
+      final suggestion = _parseSuggestion(
+        renderer,
+        minDuration: minDuration,
+        maxDuration: maxDuration,
+      );
       if (suggestion == null) {
         continue;
       }
@@ -128,7 +143,11 @@ class YouTubeSearchPageParser {
     }
   }
 
-  YouTubeSearchSuggestion? _parseSuggestion(Map<String, dynamic> renderer) {
+  YouTubeSearchSuggestion? _parseSuggestion(
+    Map<String, dynamic> renderer, {
+    Duration? minDuration,
+    Duration? maxDuration,
+  }) {
     final videoId = _readString(renderer['videoId']);
     final displayText = _normalizeText(_readText(renderer['title']));
     final ownerText = _normalizeText(_readText(renderer['ownerText']));
@@ -143,7 +162,8 @@ class YouTubeSearchPageParser {
     }
 
     if (duration != null &&
-        (duration < _minSongDuration || duration > _maxSongDuration)) {
+        ((minDuration != null && duration < minDuration) ||
+            (maxDuration != null && duration > maxDuration))) {
       return null;
     }
 
