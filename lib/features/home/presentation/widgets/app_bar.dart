@@ -1,4 +1,3 @@
-import 'package:flow_music/features/song/presentation/widgets/artist_name_button.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flow_music/core/audio/now_playing_provider.dart';
 import 'package:flow_music/core/utils/locale_keys.g.dart';
@@ -173,40 +172,10 @@ class _NowPlayingDetailsBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Expanded(child: _NowPlayingHeading(state: state)),
+        // El centro va vacio: titulo y artista ya estan grandes en el
+        // reproductor, repetirlos aqui solo hacia ruido.
+        const Spacer(),
         _NowPlayingMenuButton(state: state, onSelected: onSelected),
-      ],
-    );
-  }
-}
-
-class _NowPlayingHeading extends StatelessWidget {
-  final NowPlayingDetailsViewState state;
-
-  const _NowPlayingHeading({required this.state});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          state.title,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        if (state.author.isNotEmpty)
-          ArtistNameButton(
-            artist: state.author,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
       ],
     );
   }

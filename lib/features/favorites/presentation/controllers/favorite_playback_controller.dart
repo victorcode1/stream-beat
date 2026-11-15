@@ -1,3 +1,4 @@
+import 'package:flow_music/core/audio/background_audio_handler.dart';
 import 'package:flow_music/features/autoplay/presentation/controllers/autoplay_queue_controller.dart';
 import 'package:flow_music/features/favorites/data/favorite_song.dart';
 import 'package:flow_music/features/search/data/models/youtube_search_suggestion.dart';
@@ -41,5 +42,10 @@ class FavoritePlaybackController {
       thumbnailUrl: song.thumbnailUrl,
     );
     await controller.autoPlay(id: song.videoId);
+  }
+
+  /// Pausa o reanuda la cancion activa sin reiniciarla.
+  Future<void> togglePlayback({required bool isPlaying}) {
+    return isPlaying ? flowAudioHandler.pause() : flowAudioHandler.play();
   }
 }

@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flow_music/core/theme/desktop_theme.dart';
 import 'package:flow_music/core/utils/locale_keys.g.dart';
 import 'package:flow_music/features/favorites/data/favorite_song.dart';
+import 'package:flow_music/shared/widgets/playing_bars_indicator.dart';
 import 'package:flutter/material.dart';
 
 /// Listado de favoritos en tabla para escritorio.
@@ -18,6 +19,8 @@ class FavoriteSongsTable extends StatelessWidget {
     required this.padding,
     required this.onPlay,
     required this.onRemove,
+    this.currentId,
+    this.isPlaying = false,
   });
 
   /// Ancho de la columna de indice y de la columna derecha.
@@ -29,6 +32,12 @@ class FavoriteSongsTable extends StatelessWidget {
   final EdgeInsets padding;
   final void Function(int index) onPlay;
   final void Function(FavoriteSong song) onRemove;
+
+  /// videoId de la cancion cargada en el reproductor.
+  final String? currentId;
+
+  /// El reproductor esta sonando (no en pausa).
+  final bool isPlaying;
 
   @override
   Widget build(BuildContext context) {
@@ -90,6 +99,8 @@ class FavoriteSongsTable extends StatelessWidget {
             itemBuilder: (context, index) => _SongRow(
               song: songs[index],
               position: index + 1,
+              isCurrent: songs[index].videoId == currentId,
+              isPlaying: songs[index].videoId == currentId && isPlaying,
               onPlay: () => onPlay(index),
               onRemove: () => onRemove(songs[index]),
             ),
@@ -106,12 +117,16 @@ class _SongRow extends StatelessWidget {
     required this.position,
     required this.onPlay,
     required this.onRemove,
+    required this.isCurrent,
+    required this.isPlaying,
   });
 
   final FavoriteSong song;
   final int position;
   final VoidCallback onPlay;
   final VoidCallback onRemove;
+  final bool isCurrent;
+  final bool isPlaying;
 
   @override
   Widget build(BuildContext context) {
@@ -124,7 +139,9 @@ class _SongRow extends StatelessWidget {
     );
 
     return Material(
-      color: Colors.transparent,
+      color: isCurrent
+          ? colors.primary.withValues(alpha: 0.10)
+          : Colors.transparent,
       borderRadius: BorderRadius.circular(10),
       child: InkWell(
         borderRadius: BorderRadius.circular(10),
@@ -135,14 +152,23 @@ class _SongRow extends StatelessWidget {
             children: [
               SizedBox(
                 width: FavoriteSongsTable._indexWidth,
-                child: Text(
-                  '$position',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: FlowDesktopTheme.faint(colors),
-                  ),
-                ),
+                child: isCurrent
+                    ? Align(
+                        alignment: Alignment.centerLeft,
+                        child: PlayingBarsIndicator(
+                          isPlaying: isPlaying,
+                          color: colors.primary,
+                          size: 16,
+                        ),
+                      )
+                    : Text(
+                        '$position',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: FlowDesktopTheme.faint(colors),
+                        ),
+                      ),
               ),
               const SizedBox(width: FavoriteSongsTable._columnGap),
               Expanded(
@@ -162,7 +188,9 @@ class _SongRow extends StatelessWidget {
                             style: theme.textTheme.bodyMedium?.copyWith(
                               fontSize: 14,
                               fontWeight: FontWeight.w700,
-                              color: colors.onSurface,
+                              color: isCurrent
+                                  ? colors.primary
+                                  : colors.onSurface,
                             ),
                           ),
                           if (song.author.isNotEmpty)

@@ -627,109 +627,118 @@ class _StationTile extends StatelessWidget {
       if (station.bitrate > 0) '${station.bitrate} kbps',
     ].join(' · ');
 
-    return InkWell(
-      borderRadius: BorderRadius.circular(20),
-      onTap: onTap,
-      onLongPress: onLongPress,
-      child: Ink(
-        decoration: BoxDecoration(
-          color: colors.surface,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isActive
-                ? colors.primary
-                : extras?.subtleStroke ?? colors.outline,
-          ),
-        ),
-        padding: const EdgeInsets.all(14),
-        child: Row(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(14),
-              child: SizedBox.square(
-                dimension: 58,
-                child: station.artworkUrl.isEmpty
-                    ? _RadioArtwork(colors: colors)
-                    : Image.network(
-                        station.artworkUrl,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) =>
-                            _RadioArtwork(colors: colors),
-                      ),
-              ),
+    // Material propio: sin el, `Ink` pinta en el del Scaffold y su
+    // fondo se sale de la lista (se veia detras del app bar).
+    return Material(
+      type: MaterialType.transparency,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: onTap,
+        onLongPress: onLongPress,
+        child: Ink(
+          decoration: BoxDecoration(
+            color: colors.surface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isActive
+                  ? colors.primary
+                  : extras?.subtleStroke ?? colors.outline,
             ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    station.name.isEmpty ? LocaleKeys.radio.tr() : station.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
+          ),
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: SizedBox.square(
+                  dimension: 58,
+                  child: station.artworkUrl.isEmpty
+                      ? _RadioArtwork(colors: colors)
+                      : Image.network(
+                          station.artworkUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) =>
+                              _RadioArtwork(colors: colors),
+                        ),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      station.name.isEmpty
+                          ? LocaleKeys.radio.tr()
+                          : station.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 5),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      if (flag.isNotEmpty) ...[
-                        _FlagEmoji(flag: flag, size: 16, dimension: 22),
-                        const SizedBox(width: 6),
-                      ],
-                      Expanded(
-                        child: Text(
-                          stationDetails,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: colors.onSurfaceVariant,
-                            height: 1.1,
+                    const SizedBox(height: 5),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        if (flag.isNotEmpty) ...[
+                          _FlagEmoji(flag: flag, size: 16, dimension: 22),
+                          const SizedBox(width: 6),
+                        ],
+                        Expanded(
+                          child: Text(
+                            stationDetails,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: colors.onSurfaceVariant,
+                              height: 1.1,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            IconButton(
-              onPressed: onToggleFavorite,
-              icon: Icon(
-                isFavorite
-                    ? Icons.favorite_rounded
-                    : Icons.favorite_border_rounded,
-              ),
-              color: isFavorite ? colors.primary : colors.onSurfaceVariant,
-              tooltip: isFavorite
-                  ? LocaleKeys.remove_from_favorites.tr()
-                  : LocaleKeys.add_to_favorites.tr(),
-            ),
-            IconButton(
-              onPressed: onAddToPlaylist,
-              icon: const Icon(Icons.playlist_add_rounded),
-              color: colors.onSurfaceVariant,
-              tooltip: LocaleKeys.add_to_radio_playlist.tr(),
-            ),
-            IconButton.filled(
-              onPressed: onTap,
-              icon: isLoading
-                  ? const SizedBox.square(
-                      dimension: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : Icon(
-                      isPlaying
-                          ? Icons.pause_rounded
-                          : Icons.play_arrow_rounded,
+                      ],
                     ),
-              tooltip: isPlaying ? LocaleKeys.pause.tr() : LocaleKeys.play.tr(),
-            ),
-          ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              IconButton(
+                onPressed: onToggleFavorite,
+                icon: Icon(
+                  isFavorite
+                      ? Icons.favorite_rounded
+                      : Icons.favorite_border_rounded,
+                ),
+                color: isFavorite ? colors.primary : colors.onSurfaceVariant,
+                tooltip: isFavorite
+                    ? LocaleKeys.remove_from_favorites.tr()
+                    : LocaleKeys.add_to_favorites.tr(),
+              ),
+              IconButton(
+                onPressed: onAddToPlaylist,
+                icon: const Icon(Icons.playlist_add_rounded),
+                color: colors.onSurfaceVariant,
+                tooltip: LocaleKeys.add_to_radio_playlist.tr(),
+              ),
+              IconButton.filled(
+                onPressed: onTap,
+                icon: isLoading
+                    ? const SizedBox.square(
+                        dimension: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Icon(
+                        isPlaying
+                            ? Icons.pause_rounded
+                            : Icons.play_arrow_rounded,
+                      ),
+                tooltip: isPlaying
+                    ? LocaleKeys.pause.tr()
+                    : LocaleKeys.play.tr(),
+              ),
+            ],
+          ),
         ),
       ),
     );

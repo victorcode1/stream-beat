@@ -8,6 +8,17 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 class HomePageController {
   const HomePageController();
 
+  /// Ruta de la pestana que debe verse activa en la navegacion.
+  ///
+  /// El reproductor (`/playSong`) se abre con `push` encima de la seccion en
+  /// la que estaba el usuario, asi que marcamos esa seccion (`basePath`) en
+  /// vez de saltar siempre a Inicio.
+  String navigationPath({required String currentPath, String? basePath}) {
+    if (currentPath != '/playSong') return currentPath;
+    if (basePath == null || basePath == '/playSong') return '/home';
+    return basePath;
+  }
+
   void navigateToTab({
     required String currentPath,
     required String targetPath,

@@ -29,6 +29,12 @@ class HomeMobileBottomBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final searchController = ref.read(searchProvider);
+    final navPath = _pageController.navigationPath(
+      currentPath: currentPath,
+      basePath: GoRouter.maybeOf(
+        context,
+      )?.routerDelegate.currentConfiguration.uri.path,
+    );
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -41,7 +47,7 @@ class HomeMobileBottomBar extends ConsumerWidget {
               icon: Icons.home_outlined,
               activeIcon: Icons.home_rounded,
               label: LocaleKeys.home.tr(),
-              selected: currentPath == '/home' || currentPath == '/playSong',
+              selected: navPath == '/home',
               onTap: () => _pageController.navigateToTab(
                 // El reproductor tambien puede vivir en el estado interno de
                 // `/home`. Lo tratamos como una subruta para que volver a
@@ -57,7 +63,7 @@ class HomeMobileBottomBar extends ConsumerWidget {
               icon: Icons.library_music_outlined,
               activeIcon: Icons.library_music_rounded,
               label: LocaleKeys.library.tr(),
-              selected: currentPath == '/library',
+              selected: navPath == '/library',
               onTap: () => _pageController.navigateToTab(
                 currentPath: currentPath,
                 targetPath: '/library',
@@ -70,7 +76,7 @@ class HomeMobileBottomBar extends ConsumerWidget {
               icon: Icons.radio,
               activeIcon: Icons.radio_rounded,
               label: LocaleKeys.radio.tr(),
-              selected: currentPath == '/radio',
+              selected: navPath == '/radio',
               onTap: () => _pageController.navigateToTab(
                 currentPath: currentPath,
                 targetPath: '/radio',
@@ -83,7 +89,7 @@ class HomeMobileBottomBar extends ConsumerWidget {
               icon: Icons.travel_explore_outlined,
               activeIcon: Icons.travel_explore_rounded,
               label: LocaleKeys.radio_map_explorer_short.tr(),
-              selected: currentPath == '/radio-map',
+              selected: navPath == '/radio-map',
               onTap: () => _pageController.navigateToTab(
                 currentPath: currentPath,
                 targetPath: '/radio-map',
@@ -96,7 +102,7 @@ class HomeMobileBottomBar extends ConsumerWidget {
               icon: Icons.favorite_border_rounded,
               activeIcon: Icons.favorite_rounded,
               label: LocaleKeys.favorites.tr(),
-              selected: currentPath == '/favorites',
+              selected: navPath == '/favorites',
               onTap: () => _pageController.navigateToTab(
                 currentPath: currentPath,
                 targetPath: '/favorites',
@@ -109,7 +115,7 @@ class HomeMobileBottomBar extends ConsumerWidget {
               icon: Icons.settings_outlined,
               activeIcon: Icons.settings_rounded,
               label: LocaleKeys.settings_short.tr(),
-              selected: currentPath == '/settings',
+              selected: navPath == '/settings',
               onTap: () => _pageController.navigateToTab(
                 currentPath: currentPath,
                 targetPath: '/settings',

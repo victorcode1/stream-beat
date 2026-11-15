@@ -3,6 +3,7 @@ import 'package:flow_music/core/routes/routes.dart';
 import 'package:flow_music/core/theme/desktop_theme.dart';
 import 'package:flow_music/core/theme/flow_cover_gradients.dart';
 import 'package:flow_music/core/utils/locale_keys.g.dart';
+import 'package:flow_music/features/home/presentation/controllers/home_page_controller.dart';
 import 'package:flow_music/features/library/presentation/pages/library_playlist_detail_page.dart';
 import 'package:flow_music/features/playlists/data/playlist.dart';
 import 'package:flow_music/features/playlists/presentation/controllers/playlists_controller.dart';
@@ -24,7 +25,12 @@ class HomeDesktopSidebar extends ConsumerWidget {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final route = ref.read(routeProvider);
-    final currentPath = GoRouterState.of(context).uri.path;
+    final currentPath = const HomePageController().navigationPath(
+      currentPath: GoRouterState.of(context).uri.path,
+      basePath: GoRouter.of(
+        context,
+      ).routerDelegate.currentConfiguration.uri.path,
+    );
     final playlists = ref.watch(playlistsControllerProvider);
 
     return Container(
@@ -43,7 +49,7 @@ class HomeDesktopSidebar extends ConsumerWidget {
               _HomeDesktopNavItem(
                 icon: Icons.home_rounded,
                 label: LocaleKeys.home.tr(),
-                selected: currentPath == '/home' || currentPath == '/playSong',
+                selected: currentPath == '/home',
                 onTap: () => route.go('/home'),
               ),
               _HomeDesktopNavItem(

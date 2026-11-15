@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:flow_music/core/audio/now_playing_provider.dart';
 import 'package:flow_music/core/utils/adaptive_layout.dart';
 import 'package:flow_music/core/utils/locale_keys.g.dart';
 import 'package:flow_music/features/favorites/presentation/controllers/favorite_playback_controller.dart';
@@ -24,6 +25,8 @@ class FavoriteSongsTab extends ConsumerWidget {
     final favorites = ref.watch(favoritesControllerProvider);
     final controller = ref.read(favoritesControllerProvider.notifier);
     final searchController = ref.watch(searchProvider);
+    final currentId = ref.watch(nowPlayingIdProvider).value;
+    final isPlaying = ref.watch(nowPlayingIsPlayingProvider).value ?? false;
 
     return ListenableBuilder(
       listenable: searchController,
@@ -49,9 +52,14 @@ class FavoriteSongsTab extends ConsumerWidget {
           );
         }
 
+        // Tocar la cancion que ya suena la pausa o reanuda; no la reinicia.
         void play(int index) {
+          final playback = ref.read(favoritePlaybackControllerProvider);
+          final isCurrent = visible[index].videoId == currentId;
           unawaited(
-            ref.read(favoritePlaybackControllerProvider).play(visible, index),
+            isCurrent
+                ? playback.togglePlayback(isPlaying: isPlaying)
+                : playback.play(visible, index),
           );
         }
 
@@ -60,6 +68,8 @@ class FavoriteSongsTab extends ConsumerWidget {
         if (useFlowDesktopShell(context)) {
           return FavoriteSongsTable(
             songs: visible,
+            currentId: currentId,
+            isPlaying: isPlaying,
             padding: EdgeInsets.fromLTRB(
               flowContentInset(context),
               0,
@@ -82,8 +92,11 @@ class FavoriteSongsTab extends ConsumerWidget {
           separatorBuilder: (_, _) => const SizedBox(height: 12),
           itemBuilder: (context, index) {
             final favorite = visible[index];
+            final isCurrent = favorite.videoId == currentId;
             return FavoriteSongTile(
               favorite: favorite,
+              isCurrent: isCurrent,
+              isPlaying: isCurrent && isPlaying,
               onTap: () => play(index),
               onRemove: () => controller.remove(favorite.videoId),
             );

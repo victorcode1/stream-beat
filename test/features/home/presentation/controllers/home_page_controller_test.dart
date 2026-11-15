@@ -46,4 +46,39 @@ void main() {
       expect(navigatedPath, '/library');
     });
   });
+
+  group('HomePageController.navigationPath', () {
+    const controller = HomePageController();
+
+    test('keeps the section the player was opened from', () {
+      expect(
+        controller.navigationPath(
+          currentPath: '/playSong',
+          basePath: '/favorites',
+        ),
+        '/favorites',
+      );
+    });
+
+    test('falls back to home when the player has no section below', () {
+      expect(
+        controller.navigationPath(currentPath: '/playSong', basePath: null),
+        '/home',
+      );
+      expect(
+        controller.navigationPath(
+          currentPath: '/playSong',
+          basePath: '/playSong',
+        ),
+        '/home',
+      );
+    });
+
+    test('returns the current path outside the player', () {
+      expect(
+        controller.navigationPath(currentPath: '/radio', basePath: '/radio'),
+        '/radio',
+      );
+    });
+  });
 }
