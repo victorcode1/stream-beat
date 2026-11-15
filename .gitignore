@@ -85,3 +85,6 @@ scrip.sh
 /radio/
 /radio-restored/
 /radio-bundles/*.tmp
+
+# Local build outputs (APKs, QA captures)
+/output/
