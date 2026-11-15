@@ -7,7 +7,6 @@ import 'package:flow_music/features/autoplay/presentation/controllers/cache_stat
 import 'package:flow_music/features/settings/presentation/controllers/accent_color_controller.dart';
 import 'package:flow_music/features/settings/presentation/controllers/visual_style_controller.dart';
 import 'package:flow_music/features/settings/presentation/controllers/theme_mode_controller.dart';
-import 'package:flow_music/features/account/presentation/widgets/account_recovery_listener.dart';
 import 'package:flow_music/shared/widgets/flow_ambient_background.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -65,12 +64,10 @@ class _MainAppState extends ConsumerState<MainApp> with WidgetsBindingObserver {
       // Mola y Carteles son mundos oscuros: no cambian con la apariencia.
       themeMode: style.alwaysDark ? ThemeMode.dark : themeMode,
       builder: (context, child) {
-        return AccountRecoveryListener(
-          child: FlowAmbientBackground(
-            child: ScaffoldMessenger(
-              key: controller.scaffoldMessage,
-              child: child ?? const SizedBox(),
-            ),
+        return FlowAmbientBackground(
+          child: ScaffoldMessenger(
+            key: controller.scaffoldMessage,
+            child: child ?? const SizedBox(),
           ),
         );
       },

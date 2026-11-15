@@ -1,7 +1,5 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flow_music/app/app.dart';
-import 'package:flow_music/core/backend/backend_bootstrap.dart';
-import 'package:flow_music/core/backend/backend_providers.dart';
 import 'package:flow_music/core/audio/background_audio_handler.dart';
 import 'package:flow_music/features/autoplay/data/audio_cache_stub.dart'
     if (dart.library.io) 'package:flow_music/features/autoplay/data/audio_cache_io.dart';
@@ -38,13 +36,11 @@ void main() async {
   // (e.g. crash before the detach lifecycle fired), drop them now so storage
   // can't grow across launches.
   await clearAudioCache();
-  final backend = await BackendBootstrap.initialize();
   final packageInfo = await PackageInfo.fromPlatform();
 
   runApp(
     ProviderScope(
       overrides: [
-        supabaseClientProvider.overrideWithValue(backend.supabaseClient),
         infoVersionProvider.overrideWithBuild((ref, notifier) {
           return InfoVersion().build().copyWith(
             version: packageInfo.version,

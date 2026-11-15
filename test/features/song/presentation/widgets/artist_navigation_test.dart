@@ -126,7 +126,7 @@ void main() {
   );
 
   testWidgets(
-    'player app bar has song and artist and puts the three actions in overflow',
+    'player app bar leaves title and artist to the player and puts the three actions in overflow',
     (tester) async {
       await tester.pumpWidget(
         ProviderScope(
@@ -148,8 +148,10 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.text('Current song'), findsOneWidget);
-      expect(find.text('Artist'), findsOneWidget);
+      // Titulo y artista ya estan grandes en el reproductor: la barra no
+      // los repite.
+      expect(find.text('Current song'), findsNothing);
+      expect(find.text('Artist'), findsNothing);
       expect(find.textContaining('REPRODUCIENDO'), findsNothing);
       expect(find.byIcon(Icons.queue_music_rounded), findsNothing);
       expect(find.byIcon(Icons.ios_share_rounded), findsNothing);
