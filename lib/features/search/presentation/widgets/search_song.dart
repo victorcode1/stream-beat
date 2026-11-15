@@ -5,8 +5,6 @@ import 'package:flow_music/core/utils/locale_keys.g.dart';
 import 'package:flow_music/features/search/data/search_history_repository.dart';
 import 'package:flow_music/features/search/presentation/controllers/search_history_controller.dart';
 import 'package:flow_music/features/search/presentation/pages/list_search.dart';
-import 'package:flow_music/features/song/presentation/pages/song.dart';
-import 'package:flow_music/features/search/presentation/providers/list_search_result.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
@@ -93,59 +91,9 @@ class ViewSearchDelegate extends SearchDelegate<void> {
   @override
   Widget buildResults(BuildContext context) {
     return query.isNotEmpty
-        ? Consumer(
-            builder: (context, ref, child) {
-              final asyncResults = ref.watch(searchResultDataProvider(query));
-
-              return asyncResults.when(
-                data: (items) {
-                  if (items.isEmpty || items.first.videoId.isEmpty) {
-                    return Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(32),
-                        child: Text(
-                          LocaleKeys.no_results.tr(),
-                          style: Theme.of(context).textTheme.bodyLarge
-                              ?.copyWith(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant,
-                              ),
-                        ),
-                      ),
-                    );
-                  }
-                  final suggestion = items.first;
-                  final duration = suggestion.duration;
-                  final Map<String?, String?> data = {
-                    'idSong': suggestion.videoId,
-                    'playListId': '',
-                    if (duration != null)
-                      'durationMs': '${duration.inMilliseconds}',
-                  };
-                  return SongWidget(data: data);
-                },
-                loading: () => const Center(
-                  child: CircularProgressIndicator.adaptive(strokeWidth: 2),
-                ),
-                error: (error, stackTrace) => Builder(
-                  builder: (context) {
-                    debugPrint(
-                      'Error fetching search results: $error $stackTrace',
-                    );
-                    return Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(32),
-                        child: Text(
-                          LocaleKeys.error.tr(),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              );
-            },
+        ? SuggestedListSearch(
+            searchQuery: query,
+            onSelect: (_) => close(context, null),
           )
         : Center(
             child: Padding(

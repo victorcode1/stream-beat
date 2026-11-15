@@ -66,3 +66,6 @@ Future<ShareableDownload> prepareDownloadedForSharing(
 ) async {
   return ShareableDownload(path: audio.filePath);
 }
+
+Future<DownloadedAudio> repairDownloadedMetadata(DownloadedAudio audio) async =>
+    audio;

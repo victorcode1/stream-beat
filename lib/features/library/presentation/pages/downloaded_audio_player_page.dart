@@ -5,6 +5,7 @@ import 'package:flow_music/features/library/presentation/widgets/downloaded_file
 import 'package:flow_music/features/playlists/presentation/widgets/playlist_actions.dart';
 import 'package:flow_music/features/song/presentation/controllers/song_controller.dart';
 import 'package:flow_music/features/song/presentation/widgets/modern_player_widget.dart';
+import 'package:flow_music/features/song/presentation/widgets/artist_name_button.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
@@ -24,6 +25,7 @@ class _DownloadedAudioPlayerPageState
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       if (widget.downloadedAudio.isVideo) {
         ref.read(songController).playDownloadedVideo(widget.downloadedAudio);
       } else {
@@ -62,10 +64,8 @@ class _DownloadedAudioPlayerPageState
               ),
             ),
             if (author.isNotEmpty)
-              Text(
-                author,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+              ArtistNameButton(
+                artist: author,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                   fontWeight: FontWeight.w600,

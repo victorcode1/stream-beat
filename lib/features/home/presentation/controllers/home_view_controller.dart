@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flow_music/features/search/data/models/youtube_search_suggestion.dart';
 import 'package:flow_music/features/song/presentation/controllers/song_controller.dart';
+import 'package:flow_music/features/settings/presentation/controllers/default_playback_mode_controller.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'home_view_controller.g.dart';
@@ -84,6 +85,15 @@ class HomeView extends _$HomeView {
         'playListId': '',
         if (duration != null) 'durationMs': '${duration.inMilliseconds}',
       },
+    );
+    // La seleccion inicia el audio aunque el shell siga mostrando Favoritos
+    // u otra seccion; montar la vista del reproductor no es un requisito.
+    final controller = ref.read(songController);
+    final mode = ref.read(defaultPlaybackModeControllerProvider);
+    unawaited(
+      mode == PlaybackMode.audio
+          ? controller.playAudio(id: videoId, knownDuration: duration)
+          : controller.playVideo(id: videoId),
     );
   }
 

@@ -1,3 +1,4 @@
+import 'package:flow_music/features/song/presentation/widgets/artist_name_button.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flow_music/core/audio/now_playing_provider.dart';
 import 'package:flow_music/core/utils/locale_keys.g.dart';
@@ -172,29 +173,7 @@ class _NowPlayingDetailsBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        // Una sola linea, para que el rotulo quede a la altura de los botones.
-        // Durante una descarga, el rotulo muestra su progreso.
         Expanded(child: _NowPlayingHeading(state: state)),
-        // Accesos rapidos que antes iban en chips al pie del reproductor:
-        // en la barra liberan espacio para la caratula.
-        _NowPlayingBarAction(
-          icon: state.item.isVideo
-              ? Icons.videocam_rounded
-              : Icons.videocam_outlined,
-          tooltip: LocaleKeys.video.tr(),
-          selected: state.item.isVideo,
-          onPressed: () => onSelected(HomeAppBarMenuAction.toggleVideo),
-        ),
-        _NowPlayingBarAction(
-          icon: Icons.queue_music_rounded,
-          tooltip: LocaleKeys.queue.tr(),
-          onPressed: () => onSelected(HomeAppBarMenuAction.queue),
-        ),
-        _NowPlayingBarAction(
-          icon: Icons.ios_share_rounded,
-          tooltip: LocaleKeys.share.tr(),
-          onPressed: () => onSelected(HomeAppBarMenuAction.share),
-        ),
         _NowPlayingMenuButton(state: state, onSelected: onSelected),
       ],
     );
@@ -209,56 +188,26 @@ class _NowPlayingHeading extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colors = theme.colorScheme;
-    final transfer = state.transferStatus;
-    final label = transfer?.label ?? LocaleKeys.playing.tr().toUpperCase();
-    final color = transfer == null ? colors.onSurfaceVariant : colors.primary;
-
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
-        for (final status in [?transfer, ...state.statusItems]) ...[
-          Icon(status.icon, size: 14, color: colors.primary),
-          const SizedBox(width: 6),
-        ],
-        Flexible(
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.labelMedium?.copyWith(
-              color: color,
-              fontWeight: FontWeight.w800,
-              letterSpacing: transfer == null ? 1.5 : 0.4,
-            ),
+        Text(
+          state.title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w700,
           ),
         ),
+        if (state.author.isNotEmpty)
+          ArtistNameButton(
+            artist: state.author,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
       ],
-    );
-  }
-}
-
-class _NowPlayingBarAction extends StatelessWidget {
-  const _NowPlayingBarAction({
-    required this.icon,
-    required this.tooltip,
-    required this.onPressed,
-    this.selected = false,
-  });
-
-  final IconData icon;
-  final String tooltip;
-  final VoidCallback onPressed;
-  final bool selected;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return IconButton(
-      tooltip: tooltip,
-      onPressed: onPressed,
-      visualDensity: VisualDensity.compact,
-      icon: Icon(icon, color: selected ? colors.primary : colors.onSurface),
     );
   }
 }
@@ -289,6 +238,30 @@ class _NowPlayingMenuButton extends StatelessWidget {
         icon: Icon(Icons.more_vert_rounded, color: colors.onSurface),
         onSelected: onSelected,
         itemBuilder: (context) => [
+          PopupMenuItem(
+            value: HomeAppBarMenuAction.toggleVideo,
+            child: _NowPlayingMenuRow(
+              icon: state.item.isVideo
+                  ? Icons.videocam_rounded
+                  : Icons.videocam_outlined,
+              label: LocaleKeys.video.tr(),
+            ),
+          ),
+          PopupMenuItem(
+            value: HomeAppBarMenuAction.queue,
+            child: _NowPlayingMenuRow(
+              icon: Icons.queue_music_rounded,
+              label: LocaleKeys.queue.tr(),
+            ),
+          ),
+          PopupMenuItem(
+            value: HomeAppBarMenuAction.share,
+            child: _NowPlayingMenuRow(
+              icon: Icons.ios_share_rounded,
+              label: LocaleKeys.share.tr(),
+            ),
+          ),
+          const PopupMenuDivider(),
           PopupMenuItem(
             value: HomeAppBarMenuAction.favorite,
             child: _NowPlayingMenuRow(

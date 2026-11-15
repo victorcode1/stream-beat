@@ -215,6 +215,9 @@ class SongController extends ChangeNotifier {
   /// vieja terminaba reemplazando a la ultima que el usuario habia tocado.
   int _playbackGeneration = 0;
 
+  /// Permite al coordinador descartar reintentos de una seleccion anterior.
+  int get playbackRevision => _playbackGeneration;
+
   PlaybackMode get currentMode => _currentMode;
   bool get isLoading => _isLoading;
   bool get isDownloading => _isDownloading;
@@ -1017,7 +1020,6 @@ class SongController extends ChangeNotifier {
     try {
       final extracted = extractVideoId(id);
       final videoId = extracted ?? id;
-      _currentVideoId = videoId;
 
       final existingOffline = await getOfflineAudio(videoId);
       if (existingOffline != null) {
@@ -1103,7 +1105,6 @@ class SongController extends ChangeNotifier {
     try {
       final extracted = extractVideoId(id);
       final videoId = extracted ?? id;
-      _currentVideoId = videoId;
 
       final existingDownload = await getDownloadedAudio(videoId);
       if (existingDownload != null) {
@@ -1171,7 +1172,6 @@ class SongController extends ChangeNotifier {
     try {
       final extracted = extractVideoId(id);
       final videoId = extracted ?? id;
-      _currentVideoId = videoId;
 
       final existingDownload = await getDownloadedVideo(videoId);
       if (existingDownload != null) {
@@ -1188,7 +1188,7 @@ class SongController extends ChangeNotifier {
 
       yt = YoutubeExplode();
       final video = await yt.videos.get(videoId);
-      _videoInfo = video;
+      if (_currentVideoId == videoId) _videoInfo = video;
 
       final manifest = await yt.videos.streamsClient.getManifest(videoId);
 
@@ -1376,7 +1376,7 @@ class SongController extends ChangeNotifier {
     final yt = YoutubeExplode();
     try {
       final video = await yt.videos.get(videoId);
-      _videoInfo = video;
+      if (_currentVideoId == videoId) _videoInfo = video;
 
       final manifest = await yt.videos.streamsClient.getManifest(videoId);
       final StreamInfo downloadStream;
@@ -1584,6 +1584,26 @@ class SongController extends ChangeNotifier {
     return typedStreams.first['url'] as String;
   }
 
+  Future<void> _repairPlayingDownload(
+    DownloadedAudio audio,
+    int generation,
+  ) async {
+    try {
+      final repaired = await repairDownloadedMetadata(audio);
+      if (!_isCurrentPlaybackRequest(generation)) return;
+      _downloadedAudio = repaired;
+      _audioHandler.updateTrackMetadata(
+        id: repaired.videoId.isEmpty ? repaired.filePath : repaired.videoId,
+        title: repaired.title,
+        artist: repaired.author,
+        artUrl: repaired.thumbnailUrl,
+      );
+      notifyListeners();
+    } catch (error) {
+      debugPrint('Could not recover downloaded metadata: $error');
+    }
+  }
+
   Future<void> playDownloadedAudio(DownloadedAudio downloadedAudio) async {
     final generation = _beginPlaybackRequest();
     try {
@@ -1595,6 +1615,9 @@ class SongController extends ChangeNotifier {
           ? _currentVideoId
           : downloadedAudio.videoId;
       _downloadedAudio = downloadedAudio;
+      _videoInfo = null;
+      _offlineAudio = null;
+      _isPlayingOfflineAudio = false;
       notifyListeners();
 
       await _audioHandler.stop();
@@ -1617,6 +1640,7 @@ class SongController extends ChangeNotifier {
 
       if (!_isCurrentPlaybackRequest(generation)) return;
       _isLoading = false;
+      unawaited(_repairPlayingDownload(downloadedAudio, generation));
       unawaited(
         ref
             .read(playbackHistoryControllerProvider.notifier)
@@ -1753,7 +1777,9 @@ class SongController extends ChangeNotifier {
   /// metadata so those entry points also get a next song and background
   /// refills. Existing search/home queues are preserved.
   void _ensureAutoplayQueueForCurrent(String videoId) {
-    if (videoId.isEmpty || !ref.read(autoplayEnabledControllerProvider)) {
+    if (videoId.isEmpty ||
+        (!ref.read(autoplayEnabledControllerProvider) &&
+            !ref.read(autoplayQueueControllerProvider).isCollection)) {
       return;
     }
 

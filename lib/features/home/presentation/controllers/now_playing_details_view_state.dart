@@ -57,7 +57,7 @@ class NowPlayingDetailsViewState {
 
     return NowPlayingDetailsViewState(
       item: item,
-      title: item.title.trim().isEmpty ? LocaleKeys.playing.tr() : item.title,
+      title: item.title.trim(),
       author: item.author.trim(),
       isDownloaded: isDownloaded,
       isOfflineSaved: isOfflineSaved,

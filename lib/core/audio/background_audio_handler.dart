@@ -94,7 +94,9 @@ class QueuedTrack {
 /// en segundo plano; Dart solo se entera despues ([onAutoAdvanced]) para
 /// actualizar la cola, el historial y la interfaz.
 class FlowAudioHandler extends BaseAudioHandler with SeekHandler {
-  FlowAudioHandler() {
+  FlowAudioHandler({ja.AudioPlayer? audioPlayer})
+    : _player =
+          audioPlayer ?? ja.AudioPlayer(useProxyForRequestHeaders: false) {
     _subscriptions
       ..add(
         _player.playerStateStream.listen(
@@ -115,7 +117,7 @@ class FlowAudioHandler extends BaseAudioHandler with SeekHandler {
       ..add(_player.errorStream.listen(_onPlayerError));
   }
 
-  final ja.AudioPlayer _player = ja.AudioPlayer();
+  final ja.AudioPlayer _player;
 
   /// Vista del reproductor para la interfaz.
   late final FlowPlayer player = FlowPlayer(_player);
@@ -163,6 +165,20 @@ class FlowAudioHandler extends BaseAudioHandler with SeekHandler {
   static const Duration _fadeInDuration = Duration(milliseconds: 700);
   static const Duration _fadeStep = Duration(milliseconds: 50);
   bool _smoothTransitions = true;
+  bool _appInBackground = false;
+  bool get _useFades => _smoothTransitions && !_appInBackground;
+
+  /// Los temporizadores de Dart no deben controlar el volumen en segundo
+  /// plano: pueden suspenderse dejando el reproductor nativo en silencio.
+  Future<void> setAppInBackground(bool value) async {
+    _appInBackground = value;
+    if (value) {
+      _fadeGeneration++;
+      _fadeOutStarted = false;
+      await _player.setVolume(1);
+    }
+  }
+
   bool _fadeOutStarted = false;
   int _fadeGeneration = 0;
 
@@ -185,7 +201,7 @@ class FlowAudioHandler extends BaseAudioHandler with SeekHandler {
 
   void setSmoothTransitions(bool value) {
     _smoothTransitions = value;
-    if (!value) {
+    if (!_useFades) {
       _fadeGeneration++;
       _fadeOutStarted = false;
       unawaited(_player.setVolume(1));
@@ -269,7 +285,8 @@ class FlowAudioHandler extends BaseAudioHandler with SeekHandler {
     try {
       final source = await _buildSource(track);
       if (!_isCurrentSource(generation)) return;
-      await _player.setVolume(_smoothTransitions ? 0 : 1);
+      await _player.setVolume(_useFades ? 0 : 1);
+      if (!_isCurrentSource(generation)) return;
       await _player.setAudioSources([source]);
       if (!_isCurrentSource(generation)) return;
       unawaited(_player.play());
@@ -304,7 +321,11 @@ class FlowAudioHandler extends BaseAudioHandler with SeekHandler {
             contentLength: track.contentLength,
           )
         : url;
-    return ja.AudioSource.uri(Uri.parse(playableUrl), tag: item);
+    return ja.AudioSource.uri(
+      Uri.parse(playableUrl),
+      headers: track.proxyRemoteSource ? null : track.requestHeaders,
+      tag: item,
+    );
   }
 
   /// Pide la siguiente pista y la agrega detras de la actual.
@@ -327,14 +348,15 @@ class FlowAudioHandler extends BaseAudioHandler with SeekHandler {
     _queuedNextId = next.id;
     try {
       final source = await _buildSource(next);
-      if (queueGeneration != _queueGeneration) {
-        _queuedNextId = null;
-        return;
-      }
+      if (queueGeneration != _queueGeneration) return;
       await _player.addAudioSource(source);
+      if (queueGeneration != _queueGeneration) return;
+      _fadeGeneration++;
+      _fadeOutStarted = false;
+      await _player.setVolume(1);
       debugPrint('Queued next track natively: ${next.id}');
     } catch (error) {
-      _queuedNextId = null;
+      if (queueGeneration == _queueGeneration) _queuedNextId = null;
       debugPrint('Could not queue next track ${next.id}: $error');
     }
   }
@@ -362,6 +384,23 @@ class FlowAudioHandler extends BaseAudioHandler with SeekHandler {
   /// Id de la pista encolada en el reproductor nativo, si hay una.
   String? get queuedNextId => _queuedNextId;
 
+  void updateTrackMetadata({
+    required String id,
+    required String title,
+    required String artist,
+    required String artUrl,
+  }) {
+    final current = mediaItem.value;
+    if (current == null || current.id != id) return;
+    mediaItem.add(
+      current.copyWith(
+        title: title,
+        artist: artist,
+        artUri: artUrl.isEmpty ? null : Uri.tryParse(artUrl),
+      ),
+    );
+  }
+
   void _setCurrent(MediaItem item) {
     _currentId = item.id;
     final duration = item.duration;
@@ -388,10 +427,14 @@ class FlowAudioHandler extends BaseAudioHandler with SeekHandler {
     unawaited(_player.setVolume(1));
     _setCurrent(item);
     _broadcastPlaybackState();
-    unawaited(_afterAutoAdvance(item.id, index));
+    unawaited(_afterAutoAdvance(item.id, index, _sourceGeneration));
   }
 
-  Future<void> _afterAutoAdvance(String id, int index) async {
+  Future<void> _afterAutoAdvance(
+    String id,
+    int index,
+    int sourceGeneration,
+  ) async {
     // Quita las pistas terminadas para que la playlist no crezca.
     if (index > 0) {
       try {
@@ -400,6 +443,7 @@ class FlowAudioHandler extends BaseAudioHandler with SeekHandler {
         debugPrint('Could not trim finished tracks: $error');
       }
     }
+    if (!_isCurrentSource(sourceGeneration) || _currentId != id) return;
     final hook = onAutoAdvanced;
     if (hook != null) {
       try {
@@ -462,9 +506,13 @@ class FlowAudioHandler extends BaseAudioHandler with SeekHandler {
   }
 
   void _maybeStartFadeOut(Duration position) {
-    if (!_smoothTransitions || _fadeOutStarted) return;
+    if (!_useFades || _fadeOutStarted) return;
     if (!_hasTrustedDuration || _duration <= _fadeOutDuration) return;
-    final remaining = _duration - position;
+    // La duracion del catalogo puede ser menor que el audio real.
+    // Solo el reproductor nativo conoce cuando va a terminar esta fuente.
+    final nativeDuration = _player.duration;
+    if (nativeDuration == null) return;
+    final remaining = nativeDuration - position;
     if (remaining <= _fadeOutDuration && remaining > Duration.zero) {
       _fadeOutStarted = true;
       unawaited(_runFade(from: 1, to: 0, total: remaining));
@@ -490,7 +538,7 @@ class FlowAudioHandler extends BaseAudioHandler with SeekHandler {
   }
 
   void _startFadeIn() {
-    if (!_smoothTransitions) return;
+    if (!_useFades) return;
     unawaited(_runFade(from: 0, to: 1, total: _fadeInDuration));
   }
 
@@ -712,7 +760,9 @@ class FlowAudioHandler extends BaseAudioHandler with SeekHandler {
     final state = player.state;
     if (state != _lastLoggedState) {
       _lastLoggedState = state;
-      debugPrint('Background audio state: $state');
+      debugPrint(
+        'Background audio state: $state id=$_currentId next=$_queuedNextId volume=${_player.volume} processing=${_player.processingState}',
+      );
     }
   }
 }

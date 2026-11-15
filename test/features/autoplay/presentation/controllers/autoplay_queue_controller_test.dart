@@ -9,6 +9,182 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 void main() {
   test(
+    'a pending next from an old session cannot skip the new selection',
+    () async {
+      final mix = Completer<MixPlaylistPage>();
+      final container = ProviderContainer(
+        overrides: [
+          autoplayMixLoaderProvider.overrideWithValue((_) => mix.future),
+          autoplayAudioResolverProvider.overrideWithValue((_) async => null),
+        ],
+      );
+      addTearDown(container.dispose);
+      final queue = container.read(autoplayQueueControllerProvider.notifier);
+      const a = YouTubeSearchSuggestion(
+        videoId: 'a',
+        displayText: 'A',
+        channelTitle: '',
+        thumbnailUrl: '',
+      );
+      const b = YouTubeSearchSuggestion(
+        videoId: 'b',
+        displayText: 'B',
+        channelTitle: '',
+        thumbnailUrl: '',
+      );
+      const c = YouTubeSearchSuggestion(
+        videoId: 'c',
+        displayText: 'C',
+        channelTitle: '',
+        thumbnailUrl: '',
+      );
+      queue.enqueue(const [a], 0);
+      final oldNext = queue.playNext();
+      queue.enqueue(const [b, c], 0, collection: true);
+      mix.complete(MixPlaylistPage.empty);
+      expect(await oldNext, isNull);
+      expect(
+        container.read(autoplayQueueControllerProvider).current?.videoId,
+        'b',
+      );
+    },
+  );
+
+  test(
+    'stale resolution cannot overwrite the same song in a newer session',
+    () async {
+      final requests = <Completer<ResolvedAudio?>>[];
+      final container = ProviderContainer(
+        overrides: [
+          autoplayAudioResolverProvider.overrideWithValue((_) {
+            final request = Completer<ResolvedAudio?>();
+            requests.add(request);
+            return request.future;
+          }),
+        ],
+      );
+      addTearDown(container.dispose);
+      final queue = container.read(autoplayQueueControllerProvider.notifier);
+      const a = YouTubeSearchSuggestion(
+        videoId: 'a',
+        displayText: 'A',
+        channelTitle: '',
+        thumbnailUrl: '',
+      );
+      const b = YouTubeSearchSuggestion(
+        videoId: 'b',
+        displayText: 'B',
+        channelTitle: '',
+        thumbnailUrl: '',
+      );
+      queue.enqueue(const [a, b], 0, collection: true);
+      queue.enqueue(const [a, b], 0, collection: true);
+      expect(requests, hasLength(2));
+      requests.last.complete(
+        const ResolvedAudio(
+          suggestion: b,
+          audioUrl: 'https://new.example/audio',
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+      requests.first.complete(
+        const ResolvedAudio(
+          suggestion: b,
+          audioUrl: 'https://old.example/audio',
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(
+        container.read(autoplayQueueControllerProvider).resolved['b']?.audioUrl,
+        'https://new.example/audio',
+      );
+    },
+  );
+
+  test(
+    'collection stays ordered, wraps and never fetches recommendations',
+    () async {
+      var recommendations = 0;
+      final container = ProviderContainer(
+        overrides: [
+          autoplayMixLoaderProvider.overrideWithValue((_) async {
+            recommendations++;
+            return MixPlaylistPage.empty;
+          }),
+          autoplayRelatedLoaderProvider.overrideWithValue((_) async {
+            recommendations++;
+            return const [];
+          }),
+          autoplaySuggestionLoaderProvider.overrideWithValue((_) async {
+            recommendations++;
+            return const [];
+          }),
+          autoplayAudioResolverProvider.overrideWithValue((_) async => null),
+        ],
+      );
+      addTearDown(container.dispose);
+      final queue = container.read(autoplayQueueControllerProvider.notifier);
+      final songs = List.generate(
+        3,
+        (i) => YouTubeSearchSuggestion(
+          videoId: 'favorite-$i',
+          displayText: 'Same title',
+          channelTitle: 'Artist',
+          thumbnailUrl: '',
+        ),
+      );
+      queue.enqueue(songs, 1, collection: true);
+      expect((await queue.playNext())?.suggestion.videoId, 'favorite-2');
+      expect((await queue.playNext())?.suggestion.videoId, 'favorite-0');
+      expect(queue.playPrevious()?.suggestion.videoId, 'favorite-2');
+      expect((await queue.playNext())?.suggestion.videoId, 'favorite-0');
+      expect((await queue.playNext())?.suggestion.videoId, 'favorite-1');
+      await queue.loadMoreUpcoming();
+      expect(
+        container.read(autoplayQueueControllerProvider).canLoadMore,
+        isFalse,
+      );
+      expect(recommendations, 0);
+    },
+  );
+
+  test(
+    'a single favorite repeats and a new search resets collection mode',
+    () async {
+      final container = ProviderContainer(
+        overrides: [
+          autoplayMixLoaderProvider.overrideWithValue(
+            (_) async => MixPlaylistPage.empty,
+          ),
+          autoplayRelatedLoaderProvider.overrideWithValue(
+            (_) async => const [],
+          ),
+          autoplaySuggestionLoaderProvider.overrideWithValue(
+            (_) async => const [],
+          ),
+          autoplayAudioResolverProvider.overrideWithValue((_) async => null),
+        ],
+      );
+      addTearDown(container.dispose);
+      final queue = container.read(autoplayQueueControllerProvider.notifier);
+      const song = YouTubeSearchSuggestion(
+        videoId: 'only',
+        displayText: 'Only',
+        channelTitle: '',
+        thumbnailUrl: '',
+      );
+      queue.enqueue(const [song], 0, collection: true);
+      expect((await queue.playNext())?.suggestion.videoId, 'only');
+      expect(queue.playPrevious()?.suggestion.videoId, 'only');
+      queue.enqueue(const [song], 0);
+      expect(
+        container.read(autoplayQueueControllerProvider).isCollection,
+        isFalse,
+      );
+    },
+  );
+
+  test(
     'playNext waits for a background refill when the queue is empty',
     () async {
       final loaderStarted = Completer<void>();

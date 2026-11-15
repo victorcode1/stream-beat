@@ -91,6 +91,7 @@ class AutoplayQueueState {
     required this.resolved,
     required this.inFlight,
     required this.isLoadingMore,
+    this.isCollection = false,
   });
 
   /// Tracks already played in this session, most-recent last.
@@ -112,6 +113,9 @@ class AutoplayQueueState {
   /// Whether related songs are currently being appended to [upcoming].
   final bool isLoadingMore;
 
+  /// Lista cerrada y circular: nunca agrega recomendaciones.
+  final bool isCollection;
+
   static const AutoplayQueueState empty = AutoplayQueueState(
     played: [],
     current: null,
@@ -124,8 +128,12 @@ class AutoplayQueueState {
   /// An active autoplay session can always request another track. If the
   /// buffer happens to be empty, [AutoplayQueueController.playNext] waits for
   /// an urgent refill instead of leaving the button disabled.
+  YouTubeSearchSuggestion? get next =>
+      upcoming.firstOrNull ??
+      (isCollection ? (played.firstOrNull ?? current) : null);
+
   bool get hasNext => current != null;
-  bool get hasPrevious => played.isNotEmpty;
+  bool get hasPrevious => isCollection || played.isNotEmpty;
 
   /// Posicion de la pista actual dentro de la sesion (1 based) y total de
   /// pistas conocidas, para que la cola pueda decir "vas en la 5 de 24".
@@ -134,7 +142,8 @@ class AutoplayQueueState {
       played.length + (current == null ? 0 : 1) + upcoming.length;
 
   /// Quedan pistas por pedir: la cola puede seguir creciendo hacia abajo.
-  bool get canLoadMore => current != null && upcoming.length < _maxQueueLength;
+  bool get canLoadMore =>
+      !isCollection && current != null && upcoming.length < _maxQueueLength;
 
   AutoplayQueueState copyWith({
     List<YouTubeSearchSuggestion>? played,
@@ -153,6 +162,7 @@ class AutoplayQueueState {
       resolved: resolved ?? this.resolved,
       inFlight: inFlight ?? this.inFlight,
       isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+      isCollection: isCollection,
     );
   }
 }
@@ -225,7 +235,13 @@ class AutoplayQueueController extends _$AutoplayQueueController {
 
   /// Replace the queue with [results], centring on [selectedIndex] as the
   /// currently-playing track and start prefetching its successors.
-  void enqueue(List<YouTubeSearchSuggestion> results, int selectedIndex) {
+  List<YouTubeSearchSuggestion> _collection = const [];
+
+  void enqueue(
+    List<YouTubeSearchSuggestion> results,
+    int selectedIndex, {
+    bool collection = false,
+  }) {
     if (selectedIndex < 0 || selectedIndex >= results.length) {
       clear();
       return;
@@ -237,6 +253,18 @@ class AutoplayQueueController extends _$AutoplayQueueController {
     }
 
     _beginNewQueue();
+
+    if (collection) {
+      state = AutoplayQueueState.empty;
+      _collection = List.unmodifiable(
+        results.where((song) => song.videoId.isNotEmpty),
+      );
+      final index = _collection.indexWhere(
+        (song) => song.videoId == selectedId,
+      );
+      _selectCollectionTrack(index);
+      return;
+    }
 
     // La lista de resultados suele traer la misma cancion varias veces
     // (oficial, lyrics, audio...). Nos quedamos con la primera de cada una,
@@ -275,11 +303,37 @@ class AutoplayQueueController extends _$AutoplayQueueController {
     unawaited(_startQueueSources(_queueGeneration));
   }
 
+  NextTrack _selectCollectionTrack(int index) {
+    final song = _collection[index];
+    final resolved = state.resolved;
+    state = AutoplayQueueState(
+      played: _collection.sublist(0, index),
+      current: song,
+      upcoming: _collection.sublist(index + 1),
+      resolved: resolved,
+      inFlight: state.inFlight,
+      isLoadingMore: false,
+      isCollection: true,
+    );
+    _resolveFailed.clear();
+    _pumpPrefetch();
+    return NextTrack(suggestion: song, resolved: resolved[song.videoId]);
+  }
+
+  NextTrack _stepCollection(int step) {
+    final index = _collection.indexWhere(
+      (song) => song.videoId == state.current?.videoId,
+    );
+    return _selectCollectionTrack((index + step) % _collection.length);
+  }
+
   /// Advance to the next track. Returns the new current (with prefetched
   /// audio if ready). When the visible queue is momentarily empty, waits for
   /// the in-progress background refill before giving up.
   Future<NextTrack?> playNext() async {
-    if (!await ensureNext()) return null;
+    if (state.isCollection) return _stepCollection(1);
+    final generation = _queueGeneration;
+    if (!await ensureNext() || !_isCurrentQueue(generation)) return null;
 
     final current = state;
     if (current.upcoming.isEmpty) return null;
@@ -311,8 +365,9 @@ class AutoplayQueueController extends _$AutoplayQueueController {
   /// actual, para que el paso de cancion no dependa de Dart en segundo plano.
   /// Si aun no estaba resuelta (o su URL caduco), la resuelve ahora.
   Future<NextTrack?> peekNextResolved() async {
-    if (!await ensureNext()) return null;
-    final head = state.upcoming.firstOrNull;
+    final generation = _queueGeneration;
+    if (!await ensureNext() || !_isCurrentQueue(generation)) return null;
+    final head = state.next;
     if (head == null || head.videoId.isEmpty) return null;
 
     final known = state.resolved[head.videoId];
@@ -321,8 +376,8 @@ class AutoplayQueueController extends _$AutoplayQueueController {
     }
 
     final resolved = await ref.read(autoplayAudioResolverProvider)(head);
-    if (!ref.mounted || resolved == null) return null;
-    if (state.upcoming.firstOrNull?.videoId != head.videoId) return null;
+    if (!_isCurrentQueue(generation) || resolved == null) return null;
+    if (state.next?.videoId != head.videoId) return null;
     state = state.copyWith(
       resolved: {...state.resolved, head.videoId: resolved},
     );
@@ -333,6 +388,7 @@ class AutoplayQueueController extends _$AutoplayQueueController {
   /// points can await an urgent network refill when necessary.
   Future<bool> ensureNext() async {
     if (state.current == null) return false;
+    if (state.isCollection) return true;
     if (state.upcoming.isNotEmpty) {
       unawaited(_maintainQueueBuffer());
       return true;
@@ -359,6 +415,14 @@ class AutoplayQueueController extends _$AutoplayQueueController {
   }
 
   NextTrack? playUpcomingAt(int index) {
+    if (state.isCollection) {
+      if (index < 0 || index >= state.upcoming.length) return null;
+      return _selectCollectionTrack(
+        _collection.indexWhere(
+          (song) => song.videoId == state.upcoming[index].videoId,
+        ),
+      );
+    }
     final current = state;
     if (index < 0 || index >= current.upcoming.length) return null;
 
@@ -383,6 +447,7 @@ class AutoplayQueueController extends _$AutoplayQueueController {
   /// Go back to the previously-played track. Returns null when there is no
   /// history.
   NextTrack? playPrevious() {
+    if (state.isCollection) return _stepCollection(-1);
     final current = state;
     if (current.played.isEmpty) return null;
 
@@ -410,6 +475,10 @@ class AutoplayQueueController extends _$AutoplayQueueController {
   /// en la cola). Lo que sonaba y lo que quedaba en medio vuelve al frente de
   /// la cola, en orden, asi que no se pierde nada de la sesion.
   NextTrack? playPlayedAt(int index) {
+    if (state.isCollection) {
+      if (index < 0 || index >= state.played.length) return null;
+      return _selectCollectionTrack(index);
+    }
     final snapshot = state;
     if (index < 0 || index >= snapshot.played.length) return null;
 
@@ -441,6 +510,7 @@ class AutoplayQueueController extends _$AutoplayQueueController {
 
   void clearUpcoming() {
     state = state.copyWith(upcoming: const []);
+    _syncCollectionOrder();
     _pruneResolvedEntries();
     unawaited(_maintainQueueBuffer(force: true));
   }
@@ -449,6 +519,7 @@ class AutoplayQueueController extends _$AutoplayQueueController {
     if (index < 0 || index >= state.upcoming.length) return;
     final next = [...state.upcoming]..removeAt(index);
     state = state.copyWith(upcoming: next);
+    _syncCollectionOrder();
     _pruneResolvedEntries();
     _pumpPrefetch();
     unawaited(_maintainQueueBuffer());
@@ -468,6 +539,7 @@ class AutoplayQueueController extends _$AutoplayQueueController {
       upcoming[j] = tmp;
     }
     state = state.copyWith(upcoming: upcoming);
+    _syncCollectionOrder();
     _pumpPrefetch();
     unawaited(_maintainQueueBuffer());
   }
@@ -480,11 +552,22 @@ class AutoplayQueueController extends _$AutoplayQueueController {
     final item = current.removeAt(oldIndex);
     current.insert(target, item);
     state = state.copyWith(upcoming: current);
+    _syncCollectionOrder();
     _pumpPrefetch();
     unawaited(_maintainQueueBuffer());
   }
 
+  void _syncCollectionOrder() {
+    if (!state.isCollection) return;
+    _collection = [
+      ...state.played,
+      if (state.current != null) state.current!,
+      ...state.upcoming,
+    ];
+  }
+
   void _beginNewQueue() {
+    _collection = const [];
     _queueGeneration++;
     _refillFailures = 0;
     _queueTarget = _queueTargetLength;
@@ -503,7 +586,7 @@ class AutoplayQueueController extends _$AutoplayQueueController {
   }
 
   Future<void> _maintainQueueBuffer({bool force = false}) {
-    if (!ref.mounted) return Future.value();
+    if (!ref.mounted || state.isCollection) return Future.value();
     if (state.current == null) return Future.value();
     if (!force && state.upcoming.length > _queueRefillThreshold) {
       return Future.value();
@@ -815,7 +898,12 @@ class AutoplayQueueController extends _$AutoplayQueueController {
   }
 
   void _pumpResolves() {
-    final targets = state.upcoming.take(_resolveWindow).toList(growable: false);
+    final targets =
+        (state.isCollection && state.upcoming.isEmpty
+                ? [if (state.next != null) state.next!]
+                : state.upcoming)
+            .take(_resolveWindow)
+            .toList(growable: false);
     for (final suggestion in targets) {
       if (state.inFlight.length >= _maxConcurrentResolves) return;
       final id = suggestion.videoId;
@@ -828,11 +916,12 @@ class AutoplayQueueController extends _$AutoplayQueueController {
   }
 
   Future<void> _resolve(YouTubeSearchSuggestion suggestion) async {
+    final generation = _queueGeneration;
     final id = suggestion.videoId;
     state = state.copyWith(inFlight: {...state.inFlight, id});
 
     final resolved = await ref.read(autoplayAudioResolverProvider)(suggestion);
-    if (!ref.mounted) return;
+    if (!_isCurrentQueue(generation)) return;
 
     final snapshot = state;
     final relevant = _isStillRelevant(snapshot, id);

@@ -48,6 +48,22 @@ class DownloadedAudio {
 
   bool get isVideo => mediaType == DownloadedMediaType.video;
 
+  DownloadedAudio copyWith({
+    String? title,
+    String? author,
+    String? thumbnailUrl,
+    String? filePath,
+  }) => DownloadedAudio(
+    videoId: videoId,
+    title: title ?? this.title,
+    author: author ?? this.author,
+    thumbnailUrl: thumbnailUrl ?? this.thumbnailUrl,
+    filePath: filePath ?? this.filePath,
+    downloadedAt: downloadedAt,
+    mediaType: mediaType,
+    hasVideoTrack: hasVideoTrack,
+  );
+
   Map<String, dynamic> toJson() {
     return {
       'videoId': videoId,

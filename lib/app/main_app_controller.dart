@@ -76,14 +76,28 @@ class MainAppController {
 
   /// Mantiene la pista encolada en el reproductor nativo alineada con la
   /// cola de autoplay y con los ajustes de repetir y autoplay.
+  bool get _shouldRepeatCurrent {
+    final queue = ref.read(autoplayQueueControllerProvider);
+    return ref.read(repeatModeControllerProvider) ||
+        (queue.isCollection && queue.totalTracks == 1);
+  }
+
   void _watchNativeQueueInputs() {
-    unawaited(
-      flowAudioHandler.setRepeatCurrent(ref.read(repeatModeControllerProvider)),
-    );
+    unawaited(flowAudioHandler.setRepeatCurrent(_shouldRepeatCurrent));
     _subscriptions
       ..add(
+        ref.listen<bool>(
+          autoplayQueueControllerProvider.select(
+            (queue) => queue.isCollection && queue.totalTracks == 1,
+          ),
+          (_, _) {
+            unawaited(flowAudioHandler.setRepeatCurrent(_shouldRepeatCurrent));
+          },
+        ),
+      )
+      ..add(
         ref.listen<bool>(repeatModeControllerProvider, (_, repeat) {
-          unawaited(flowAudioHandler.setRepeatCurrent(repeat));
+          unawaited(flowAudioHandler.setRepeatCurrent(_shouldRepeatCurrent));
         }),
       )
       ..add(
@@ -103,7 +117,7 @@ class MainAppController {
       ..add(
         ref.listen<String?>(
           autoplayQueueControllerProvider.select(
-            (queue) => queue.upcoming.firstOrNull?.videoId,
+            (queue) => queue.next?.videoId,
           ),
           (_, nextId) {
             if (flowAudioHandler.queuedNextId == nextId) return;
@@ -116,7 +130,10 @@ class MainAppController {
   /// Siguiente pista del autoplay para la playlist nativa, o `null` si la
   /// pista actual no viene de la cola (radio, video, repetir, autoplay off).
   Future<QueuedTrack?> _prepareNextTrack(String currentId) async {
-    if (!ref.read(autoplayEnabledControllerProvider)) return null;
+    if (!ref.read(autoplayEnabledControllerProvider) &&
+        !ref.read(autoplayQueueControllerProvider).isCollection) {
+      return null;
+    }
     if (ref.read(repeatModeControllerProvider)) return null;
     final controller = ref.read(songController);
     if (controller.currentMode != PlaybackMode.audio) return null;
@@ -137,12 +154,13 @@ class MainAppController {
   Future<void> _handleAutoAdvanced(String id) async {
     final queue = ref.read(autoplayQueueControllerProvider);
     NextTrack? track;
-    if (queue.upcoming.firstOrNull?.videoId == id) {
+    if (queue.next?.videoId == id) {
       track = await ref
           .read(autoplayQueueControllerProvider.notifier)
           .playNext();
       if (track?.suggestion.videoId != id) track = null;
     }
+    if (flowAudioHandler.mediaItem.value?.id != id) return;
     ref.read(songController).adoptNativeAdvance(id: id, track: track);
   }
 
@@ -160,7 +178,10 @@ class MainAppController {
       return;
     }
 
-    if (!ref.read(autoplayEnabledControllerProvider)) return;
+    if (!ref.read(autoplayEnabledControllerProvider) &&
+        !ref.read(autoplayQueueControllerProvider).isCollection) {
+      return;
+    }
     final next = await ref
         .read(autoplayQueueControllerProvider.notifier)
         .playNext();
@@ -186,6 +207,9 @@ class MainAppController {
   }
 
   void handleAppLifecycleState(AppLifecycleState state) {
+    unawaited(
+      flowAudioHandler.setAppInBackground(state != AppLifecycleState.resumed),
+    );
     switch (state) {
       case AppLifecycleState.detached:
         unawaited(clearAudioCache());
@@ -226,7 +250,10 @@ class MainAppController {
     final queue = ref.read(autoplayQueueControllerProvider.notifier);
     var track = next;
     for (var attempt = 0; track != null; attempt++) {
-      await _playTrack(controller, track, mode: mode);
+      final playing = _playTrack(controller, track, mode: mode);
+      final revision = controller.playbackRevision;
+      await playing;
+      if (controller.playbackRevision != revision) return;
       // Una cancion que YouTube no entrega no debe detener el autoplay.
       if (!controller.playbackFailed || attempt >= _maxSkippedTracks) return;
       debugPrint('Skipping ${track.suggestion.videoId}: playback failed');
@@ -239,6 +266,13 @@ class MainAppController {
     NextTrack next, {
     PlaybackMode? mode,
   }) async {
+    final suggestion = next.suggestion;
+    controller.preloadMetadata(
+      videoId: suggestion.videoId,
+      title: suggestion.displayText,
+      author: suggestion.channelTitle,
+      thumbnailUrl: suggestion.thumbnailUrl,
+    );
     if ((mode ?? controller.currentMode) == PlaybackMode.video) {
       await controller.playVideo(id: next.suggestion.videoId);
       return;

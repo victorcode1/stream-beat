@@ -5,6 +5,7 @@ import 'package:flow_music/core/utils/locale_keys.g.dart';
 import 'package:flutter/material.dart';
 
 import 'track_change_transition.dart';
+import 'artist_name_button.dart';
 
 class ModernPlayerControls extends StatelessWidget {
   final ThemeData theme;
@@ -143,10 +144,8 @@ class ModernPlayerControls extends StatelessWidget {
                     ),
                     if ((author ?? '').isNotEmpty) ...[
                       const SizedBox(height: 8),
-                      Text(
-                        author!,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      ArtistNameButton(
+                        artist: author!,
                         textAlign: TextAlign.center,
                         style: theme.textTheme.bodyLarge?.copyWith(
                           fontSize: 16,
@@ -186,10 +185,8 @@ class ModernPlayerControls extends StatelessWidget {
                           ),
                           if ((author ?? '').isNotEmpty) ...[
                             const SizedBox(height: 2),
-                            Text(
-                              author!,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                            ArtistNameButton(
+                              artist: author!,
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 color: theme.colorScheme.onSurfaceVariant,
                                 fontWeight: FontWeight.w600,

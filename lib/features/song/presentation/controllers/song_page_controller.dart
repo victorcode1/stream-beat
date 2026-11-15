@@ -67,7 +67,7 @@ class SongPageController {
     }
     // La cancion ya se esta cargando (p. ej. la vista se reconstruyo al
     // seguir al autoplay): pedirla otra vez reiniciaria la carga.
-    if (requestedMode == PlaybackMode.audio &&
+    if (controller.currentMode == requestedMode &&
         controller.isLoading &&
         controller.currentVideoId == id) {
       return;

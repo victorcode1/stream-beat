@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flow_music/features/library/data/downloaded_audio.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:flow_music/features/library/data/download_metadata_recovery.dart';
 
 Future<DownloadedAudio> saveAudioStream({
   required String videoId,
@@ -223,7 +224,7 @@ Future<List<DownloadedAudio>> listDownloadedAudios() async {
 
     downloads.add(
       DownloadedAudio(
-        videoId: '',
+        videoId: _videoIdFromFilePath(entity.path),
         title: _titleFromFilePath(entity.path),
         author: '',
         thumbnailUrl: '',
@@ -234,6 +235,14 @@ Future<List<DownloadedAudio>> listDownloadedAudios() async {
     );
   }
 
+  for (var i = 0; i < downloads.length; i++) {
+    final repaired = recoverLocalDownloadMetadata(downloads[i]);
+    final changed = !identical(repaired, downloads[i]);
+    downloads[i] = repaired;
+    if (changed && repaired.videoId.isNotEmpty) {
+      await _writeMetadata(downloadsDirectory, repaired);
+    }
+  }
   downloads.sort((a, b) => b.downloadedAt.compareTo(a.downloadedAt));
   return downloads;
 }
@@ -443,7 +452,14 @@ Future<DownloadedAudio?> _readMetadataFile(File file) async {
     if (!await file.exists()) return null;
     final json = jsonDecode(await file.readAsString());
     if (json is! Map<String, dynamic>) return null;
-    return DownloadedAudio.fromJson(json);
+    final stored = DownloadedAudio.fromJson(json);
+    final localFile = File(
+      '${file.parent.path}${Platform.pathSeparator}${_fileName(stored.filePath)}',
+    );
+    final currentPath = await localFile.exists()
+        ? localFile.path
+        : stored.filePath;
+    return stored.copyWith(filePath: currentPath);
   } catch (_) {
     return null;
   }
@@ -461,4 +477,17 @@ String _titleFromFilePath(String path) {
 
 String _fileBaseName(String videoId, DownloadedMediaType mediaType) {
   return mediaType == DownloadedMediaType.video ? '$videoId-video' : videoId;
+}
+
+String _videoIdFromFilePath(String path) {
+  final name = _titleFromFilePath(path).replaceFirst(RegExp(r'-video$'), '');
+  return RegExp(r'^[A-Za-z0-9_-]{11}$').hasMatch(name) ? name : '';
+}
+
+Future<DownloadedAudio> repairDownloadedMetadata(DownloadedAudio audio) async {
+  final repaired = await recoverDownloadMetadata(audio);
+  if (!identical(audio, repaired) && repaired.videoId.isNotEmpty) {
+    await _writeMetadata(await _downloadsDirectory(), repaired);
+  }
+  return repaired;
 }
