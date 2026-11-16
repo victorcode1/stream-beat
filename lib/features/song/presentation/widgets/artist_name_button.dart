@@ -21,15 +21,18 @@ class ArtistNameButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final artistName = artist
+        .replaceFirst(RegExp(r'\s*[-–—]\s*topic\s*$', caseSensitive: false), '')
+        .trim();
     final effective = DefaultTextStyle.of(context).style.merge(style);
     final fontSize = effective.fontSize ?? 14;
 
     return Semantics(
       button: true,
-      label: artist,
+      label: artistName,
       excludeSemantics: true,
       child: InkWell(
-        onTap: () => showArtistSongs(context, artist),
+        onTap: () => showArtistSongs(context, artistName),
         borderRadius: BorderRadius.circular(6),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 6),
@@ -38,7 +41,7 @@ class ArtistNameButton extends StatelessWidget {
             children: [
               Flexible(
                 child: Text(
-                  artist,
+                  artistName,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   textAlign: textAlign,

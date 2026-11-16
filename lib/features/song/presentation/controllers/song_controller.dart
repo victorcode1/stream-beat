@@ -4,6 +4,7 @@ import 'dart:developer';
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flow_music/core/audio/background_audio_handler.dart';
+import 'package:flow_music/core/audio/background_time.dart';
 import 'package:flow_music/core/utils/locale_keys.g.dart';
 import 'package:flow_music/core/utils/main_controller.dart';
 import 'package:flow_music/features/autoplay/data/audio_cache_stub.dart'
@@ -492,8 +493,13 @@ class SongController extends ChangeNotifier {
   /// Start playback from an already-resolved audio stream, skipping the
   /// Piped / youtube_explode_dart resolution step. Used by the autoplay queue
   /// when advancing to the next prefetched track.
-  Future<void> playPrefetched(ResolvedAudio resolved) async {
+  Future<void> playPrefetched(ResolvedAudio resolved) {
     final generation = _beginPlaybackRequest();
+    return withBackgroundTime(() => _playPrefetched(resolved, generation));
+  }
+
+  Future<void> _playPrefetched(ResolvedAudio resolved, int generation) async {
+    if (!_isCurrentPlaybackRequest(generation)) return;
     try {
       _isLoading = true;
       _currentMode = PlaybackMode.audio;
@@ -602,8 +608,19 @@ class SongController extends ChangeNotifier {
     }
   }
 
-  Future<void> playAudio({required String id, Duration? knownDuration}) async {
+  Future<void> playAudio({required String id, Duration? knownDuration}) {
     final generation = _beginPlaybackRequest();
+    // Pedir tiempo antes de detener el audio: el usuario puede bloquear el
+    // telefono mientras aun se resuelve el enlace de la cancion seleccionada.
+    return withBackgroundTime(() => _playAudio(id, knownDuration, generation));
+  }
+
+  Future<void> _playAudio(
+    String id,
+    Duration? knownDuration,
+    int generation,
+  ) async {
+    if (!_isCurrentPlaybackRequest(generation)) return;
     try {
       _isLoading = true;
       _currentMode = PlaybackMode.audio;

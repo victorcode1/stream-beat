@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:flow_music/core/audio/now_playing_provider.dart';
 import 'package:flow_music/features/autoplay/presentation/controllers/autoplay_queue_controller.dart';
 import 'package:flow_music/features/home/presentation/controllers/home_view_controller.dart';
 import 'package:flow_music/features/search/data/models/youtube_search_suggestion.dart';
@@ -9,6 +10,8 @@ import 'package:flow_music/core/utils/locale_keys.g.dart';
 import 'package:flow_music/features/search/presentation/providers/list_quick_search_data.dart';
 import 'package:flow_music/features/search/presentation/widgets/search_results_desktop.dart';
 import 'package:flow_music/features/settings/presentation/controllers/autoplay_enabled_controller.dart';
+import 'package:flow_music/features/song/presentation/controllers/artist_playback_controller.dart';
+import 'package:flow_music/features/song/presentation/widgets/artist_song_tile.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flow_music/features/song/presentation/controllers/song_controller.dart';
@@ -29,6 +32,14 @@ class SuggestedListSearch extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final asyncSearch = ref.watch(searchDataReqProvider(search: searchQuery));
+    final currentId = playInPlace
+        ? ref.watch(
+            songController.select((controller) => controller.currentVideoId),
+          )
+        : null;
+    final isPlaying = playInPlace
+        ? ref.watch(nowPlayingIsPlayingProvider).value ?? false
+        : false;
     return asyncSearch.when(
       data: (suggestions) {
         final List<YouTubeSearchSuggestion> results = suggestions;
@@ -40,6 +51,12 @@ class SuggestedListSearch extends ConsumerWidget {
         void onItemTap(int index) {
           final suggestion = results[index];
           if (suggestion.videoId.isEmpty) return;
+          if (playInPlace) {
+            final playback = ref.read(artistPlaybackControllerProvider);
+            unawaited(playback.play(results, index, isPlaying: isPlaying));
+            onSelect?.call(suggestion);
+            return;
+          }
           if (ref.read(autoplayEnabledControllerProvider)) {
             ref
                 .read(autoplayQueueControllerProvider.notifier)
@@ -47,23 +64,7 @@ class SuggestedListSearch extends ConsumerWidget {
           } else {
             ref.read(autoplayQueueControllerProvider.notifier).clear();
           }
-          if (playInPlace) {
-            final controller = ref.read(songController);
-            controller.preloadMetadata(
-              videoId: suggestion.videoId,
-              title: suggestion.displayText,
-              author: suggestion.channelTitle,
-              thumbnailUrl: suggestion.thumbnailUrl,
-            );
-            unawaited(
-              controller.autoPlay(
-                id: suggestion.videoId,
-                knownDuration: suggestion.duration,
-              ),
-            );
-          } else {
-            ref.read(homeViewProvider.notifier).listen(suggestion);
-          }
+          ref.read(homeViewProvider.notifier).listen(suggestion);
           onSelect?.call(suggestion);
         }
 
@@ -151,7 +152,7 @@ class SuggestedListSearch extends ConsumerWidget {
         // ambiente), asi que dentro del shell de escritorio el rediseno se
         // perdia en cuanto se escribia. En escritorio reusa la misma vista a
         // dos columnas que los resultados completos.
-        if (useFlowDesktopShell(context)) {
+        if (!playInPlace && useFlowDesktopShell(context)) {
           return SearchResultsDesktop(items: results, onPlay: onItemTap);
         }
 
@@ -161,6 +162,15 @@ class SuggestedListSearch extends ConsumerWidget {
           separatorBuilder: (_, _) => const SizedBox(height: 12),
           itemBuilder: (context, index) {
             final suggestion = results[index];
+            if (playInPlace) {
+              final isCurrent = suggestion.videoId == currentId;
+              return ArtistSongTile(
+                song: suggestion,
+                isCurrent: isCurrent,
+                isPlaying: isCurrent && isPlaying,
+                onTap: () => onItemTap(index),
+              );
+            }
             final query = suggestion.query;
             final subtitle = suggestion.channelTitle.isNotEmpty
                 ? suggestion.channelTitle

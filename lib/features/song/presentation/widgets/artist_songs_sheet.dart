@@ -28,11 +28,7 @@ Future<void> showArtistSongs(BuildContext context, String artist) async {
             ),
           ),
           Expanded(
-            child: SuggestedListSearch(
-              searchQuery: query,
-              playInPlace: true,
-              onSelect: (_) => Navigator.of(sheetContext).pop(),
-            ),
+            child: SuggestedListSearch(searchQuery: query, playInPlace: true),
           ),
         ],
       ),

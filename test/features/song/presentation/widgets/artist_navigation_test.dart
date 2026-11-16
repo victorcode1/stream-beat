@@ -1,4 +1,6 @@
+import 'package:flow_music/app/main_app_controller.dart';
 import 'package:flow_music/core/audio/now_playing_provider.dart';
+import 'package:flow_music/features/autoplay/presentation/controllers/autoplay_queue_controller.dart';
 import 'package:flow_music/features/home/presentation/controllers/home_view_controller.dart';
 import 'package:flow_music/features/settings/presentation/controllers/default_playback_mode_controller.dart';
 import 'package:flow_music/features/favorites/data/favorite_song.dart';
@@ -26,13 +28,6 @@ class TestSongController extends SongController {
   @override
   String? get displayAuthor => 'Artist';
   @override
-  void preloadMetadata({
-    required String videoId,
-    String? title,
-    String? author,
-    String? thumbnailUrl,
-  }) {}
-  @override
   Future<void> autoPlay({required String id, Duration? knownDuration}) async {
     selections.add(id);
   }
@@ -46,6 +41,12 @@ class TestResults extends SearchDataReq {
     YouTubeSearchSuggestion(
       videoId: 'another',
       displayText: 'Another song',
+      channelTitle: 'Artist',
+      thumbnailUrl: '',
+    ),
+    YouTubeSearchSuggestion(
+      videoId: 'following',
+      displayText: 'Following song',
       channelTitle: 'Artist',
       thumbnailUrl: '',
     ),
@@ -96,7 +97,7 @@ void main() {
   );
 
   testWidgets(
-    'opening artist results preserves playback until a song is chosen',
+    'artist selection stays visible and Next plays the following artist song',
     (tester) async {
       late TestSongController controller;
       await tester.pumpWidget(
@@ -109,6 +110,10 @@ void main() {
               search: 'Artist',
             ).overrideWith(TestResults.new),
             autoplayEnabledControllerProvider.overrideWith(NoAutoplay.new),
+            nowPlayingIsPlayingProvider.overrideWith(
+              (ref) => Stream.value(false),
+            ),
+            autoplayAudioResolverProvider.overrideWithValue((_) async => null),
           ],
           child: const MaterialApp(
             home: Scaffold(body: ArtistNameButton(artist: 'Artist')),
@@ -122,6 +127,36 @@ void main() {
       await tester.tap(find.text('Another song'));
       await tester.pumpAndSettle();
       expect(controller.selections, ['another']);
+      expect(find.text('Another song'), findsOneWidget);
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(ArtistNameButton)),
+      );
+      expect(
+        container.read(autoplayQueueControllerProvider).isCollection,
+        isTrue,
+      );
+      await container.read(mainAppControllerProvider).handleSkipToNext();
+      await tester.pumpAndSettle();
+      expect(controller.selections, ['another', 'following']);
+      expect(controller.currentVideoId, 'following');
+      expect(find.text('Following song'), findsOneWidget);
+      final following = tester.getSemantics(find.text('Following song'));
+      expect(
+        following,
+        matchesSemantics(
+          isSelected: true,
+          hasSelectedState: true,
+          isButton: true,
+          isFocusable: true,
+          hasFocusAction: true,
+          hasTapAction: true,
+          label: 'Following song\nArtist',
+        ),
+      );
+      await container.read(mainAppControllerProvider).handleSkipToNext();
+      await tester.pumpAndSettle();
+      expect(controller.selections, ['another', 'following', 'another']);
+      expect(controller.currentVideoId, 'another');
     },
   );
 
