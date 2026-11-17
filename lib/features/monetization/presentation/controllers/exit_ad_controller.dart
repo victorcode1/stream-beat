@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flow_music/core/config/app_environment.dart';
+import 'package:flow_music/features/monetization/data/ad_revenue_tracker.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
@@ -37,15 +38,24 @@ class ExitAdController {
         (nextAttemptAt != null && _now().isBefore(nextAttemptAt))) {
       return;
     }
+    final tracker = AdRevenueTracker(placement: 'exit_dialog_banner');
     final ad = BannerAd(
       adUnitId: adUnitId,
       size: AdSize.mediumRectangle,
       request: const AdRequest(),
       listener: BannerAdListener(
         onAdLoaded: (ad) {
+          unawaited(tracker.loaded(ad));
           if (identical(_ad, ad)) _loadedAt = _now();
         },
-        onAdFailedToLoad: (ad, _) => _failed(ad),
+        onAdImpression: (ad) => unawaited(tracker.displayed(ad)),
+        onAdClicked: (ad) => unawaited(tracker.opened(ad)),
+        onPaidEvent: (ad, micros, precision, currency) =>
+            unawaited(tracker.paid(ad, micros, precision, currency)),
+        onAdFailedToLoad: (ad, error) {
+          unawaited(tracker.failed(ad, error));
+          _failed(ad);
+        },
       ),
     );
     _ad = ad;

@@ -98,6 +98,12 @@ void main() {
       await tester.pump();
       expect(find.byType(AdWidget), findsOneWidget);
       expect(tester.getTopLeft(find.byKey(const Key('controls'))), position);
+      // Tapping the ad first makes the app inactive; the click must still
+      // reach a live ad.
+      binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      await tester.pump();
+      expect(calls.where((c) => c.method == 'disposeAd'), isEmpty);
+      expect(find.byType(AdWidget), findsOneWidget);
       binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
       await tester.pump();
       expect(calls.where((c) => c.method == 'disposeAd'), hasLength(1));

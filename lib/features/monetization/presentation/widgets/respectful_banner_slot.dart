@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flow_music/core/config/app_environment.dart';
+import 'package:flow_music/features/monetization/data/ad_revenue_tracker.dart';
 import 'package:flow_music/features/monetization/domain/services/ad_visibility_policy.dart';
 import 'package:flow_music/features/monetization/presentation/providers/ad_providers.dart';
 import 'package:flow_music/features/monetization/presentation/providers/monetization_providers.dart';
@@ -30,14 +31,18 @@ class _RespectfulBannerSlotState extends ConsumerState<RespectfulBannerSlot>
   @override
   void initState() {
     super.initState();
-    _foreground =
-        WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
+    _foreground = _isVisible(WidgetsBinding.instance.lifecycleState);
     WidgetsBinding.instance.addObserver(this);
   }
 
+  // inactive sigue visible: ocurre al tocar el anuncio o abrir un dialogo del
+  // sistema, y retirar el banner ahi descartaria el clic.
+  static bool _isVisible(AppLifecycleState? state) =>
+      state == AppLifecycleState.resumed || state == AppLifecycleState.inactive;
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    final foreground = state == AppLifecycleState.resumed;
+    final foreground = _isVisible(state);
     if (_foreground != foreground) setState(() => _foreground = foreground);
   }
 
@@ -118,6 +123,7 @@ class _AnchoredBannerState extends ConsumerState<_AnchoredBanner>
       setState(() {});
       return;
     }
+    if (state == AppLifecycleState.inactive) return;
     // En paused Flutter puede no dibujar otro frame: liberar el recurso nativo
     // aqui, sin esperar a que el padre retire este widget.
     _retry?.cancel();
@@ -131,8 +137,9 @@ class _AnchoredBannerState extends ConsumerState<_AnchoredBanner>
   @override
   Widget build(BuildContext context) {
     final consent = ref.watch(canRequestAdsProvider);
+    final lifecycle = WidgetsBinding.instance.lifecycleState;
     if (consent.value != true ||
-        WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed) {
+        !_RespectfulBannerSlotState._isVisible(lifecycle)) {
       return const SizedBox.shrink();
     }
     if (_banner == null && _retry == null) {
@@ -154,16 +161,25 @@ class _AnchoredBannerState extends ConsumerState<_AnchoredBanner>
   }
 
   void _load() {
+    final tracker = AdRevenueTracker(placement: 'main_banner');
     final banner = BannerAd(
       adUnitId: AppEnvironment.admobBannerId,
       request: const AdRequest(),
       size: widget.size,
       listener: BannerAdListener(
         onAdLoaded: (ad) {
+          unawaited(tracker.loaded(ad));
           if (!mounted || !identical(_banner, ad)) return;
           setState(() => _loaded = true);
         },
-        onAdFailedToLoad: (ad, error) => _failed(ad),
+        onAdImpression: (ad) => unawaited(tracker.displayed(ad)),
+        onAdClicked: (ad) => unawaited(tracker.opened(ad)),
+        onPaidEvent: (ad, micros, precision, currency) =>
+            unawaited(tracker.paid(ad, micros, precision, currency)),
+        onAdFailedToLoad: (ad, error) {
+          unawaited(tracker.failed(ad, error));
+          _failed(ad);
+        },
       ),
     );
     _banner = banner;
