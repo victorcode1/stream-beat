@@ -5,6 +5,7 @@ import 'package:flow_music/features/youtube_account/data/youtube_library_store.d
 import 'package:flow_music/features/youtube_account/data/youtube_music_account_repository.dart';
 import 'package:flow_music/features/youtube_account/data/youtube_music_cookie.dart';
 import 'package:flow_music/features/youtube_account/data/youtube_music_library_parser.dart';
+import 'package:flow_music/features/youtube_account/youtube_account_feature.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
@@ -105,6 +106,8 @@ class YouTubeMusicAccountController extends Notifier<YouTubeMusicCookie?> {
 
   @override
   YouTubeMusicCookie? build() {
+    // Con la cuenta apagada al compilar, ninguna peticion lleva sesion.
+    if (!youtubeAccountAvailable) return null;
     final raw = _box.get(_cookieKey);
     return raw is String ? YouTubeMusicCookie.tryParse(raw) : null;
   }

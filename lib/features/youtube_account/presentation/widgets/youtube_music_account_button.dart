@@ -4,7 +4,7 @@ import 'package:flow_music/features/youtube_account/presentation/controllers/you
 import 'package:flow_music/features/youtube_account/presentation/widgets/connect_youtube_music_dialog.dart';
 import 'package:flow_music/features/youtube_account/presentation/widgets/youtube_music_account_sheet.dart';
 import 'package:flow_music/features/youtube_account/presentation/widgets/youtube_music_avatar.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flow_music/features/youtube_account/youtube_account_feature.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
@@ -18,7 +18,7 @@ class YouTubeMusicAccountButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // En web el navegador no deja enviar la cookie de sesion.
-    if (kIsWeb) return const SizedBox.shrink();
+    if (!youtubeAccountAvailable) return const SizedBox.shrink();
 
     final connected = ref.watch(youtubeMusicAccountControllerProvider) != null;
     final account = connected
