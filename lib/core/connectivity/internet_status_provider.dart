@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:flow_music/core/connectivity/web_internet_probe.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:internet_connection_monitor/internet_connection_monitor.dart';
@@ -9,7 +11,9 @@ import 'package:internet_connection_monitor/internet_connection_monitor.dart';
 /// Vive mientras la app esta abierta, empieza a revisar al crearse y vuelve a
 /// revisar cada vez que la app regresa a primer plano.
 final internetMonitorProvider = Provider<InternetConnectionMonitor>((ref) {
-  final monitor = InternetConnectionMonitor();
+  final monitor = InternetConnectionMonitor(
+    probe: kIsWeb ? checkWebInternet : null,
+  );
   final lifecycle = AppLifecycleListener(
     onResume: () => unawaited(monitor.check()),
   );

@@ -9,6 +9,7 @@ import 'package:flow_music/features/settings/presentation/controllers/settings_p
 import 'package:flow_music/features/settings/presentation/controllers/theme_mode_controller.dart';
 import 'package:flow_music/features/settings/presentation/widgets/accent_color_palette.dart';
 import 'package:flow_music/features/settings/presentation/widgets/developer_contact_card.dart';
+import 'package:flow_music/features/settings/presentation/widgets/donation_card.dart';
 import 'package:flow_music/features/settings/presentation/widgets/settings_web_card.dart';
 import 'package:flow_music/features/song/presentation/controllers/song_controller.dart';
 import 'package:flutter/material.dart';
@@ -243,6 +244,8 @@ class SettingsDesktopContent extends ConsumerWidget {
                           ),
                         ),
                       ),
+                      const SizedBox(height: 14),
+                      const DonationCard(),
                       const SizedBox(height: 14),
                       const DeveloperContactCard(),
                     ],

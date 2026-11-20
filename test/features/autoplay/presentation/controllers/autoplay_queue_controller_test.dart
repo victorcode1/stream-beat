@@ -823,4 +823,47 @@ void main() {
       third.videoId,
     ]);
   });
+
+  test('shuffle is a toggle that restores the list order', () async {
+    final container = ProviderContainer(
+      overrides: [
+        autoplayAudioResolverProvider.overrideWithValue((_) async => null),
+      ],
+    );
+    addTearDown(container.dispose);
+    final queue = container.read(autoplayQueueControllerProvider.notifier);
+    final songs = [
+      for (var i = 0; i < 12; i++)
+        YouTubeSearchSuggestion(
+          videoId: 'v$i',
+          displayText: 'Song $i',
+          channelTitle: '',
+          thumbnailUrl: '',
+        ),
+    ];
+    List<String> ids(List<YouTubeSearchSuggestion> list) => [
+      for (final song in list) song.videoId,
+    ];
+
+    queue.enqueue(songs, 3, collection: true);
+    var state = container.read(autoplayQueueControllerProvider);
+    expect(state.isShuffled, isFalse);
+
+    queue.toggleShuffle();
+    state = container.read(autoplayQueueControllerProvider);
+    expect(state.isShuffled, isTrue);
+    expect(state.current?.videoId, 'v3');
+    expect(state.played, isEmpty);
+    expect(
+      ids(state.upcoming)..sort(),
+      ids(songs).where((id) => id != 'v3').toList()..sort(),
+    );
+
+    queue.toggleShuffle();
+    state = container.read(autoplayQueueControllerProvider);
+    expect(state.isShuffled, isFalse);
+    expect(state.current?.videoId, 'v3');
+    expect(ids(state.played), ids(songs.sublist(0, 3)));
+    expect(ids(state.upcoming), ids(songs.sublist(4)));
+  });
 }

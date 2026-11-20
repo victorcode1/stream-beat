@@ -11,6 +11,7 @@ import 'package:flow_music/features/settings/presentation/controllers/visual_sty
 import 'package:flow_music/features/settings/presentation/widgets/accent_color_palette.dart';
 import 'package:flow_music/features/settings/presentation/widgets/visual_style_selector.dart';
 import 'package:flow_music/features/settings/presentation/widgets/developer_contact_card.dart';
+import 'package:flow_music/features/settings/presentation/widgets/donation_card.dart';
 import 'package:flow_music/features/song/presentation/controllers/song_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -229,6 +230,8 @@ class SettingsMobileContent extends ConsumerWidget {
               ],
             ),
           ),
+          const SizedBox(height: 16),
+          const DonationCard(),
           const SizedBox(height: 16),
           const DeveloperContactCard(),
         ],

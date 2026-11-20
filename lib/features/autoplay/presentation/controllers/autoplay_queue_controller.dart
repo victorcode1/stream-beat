@@ -92,6 +92,7 @@ class AutoplayQueueState {
     required this.inFlight,
     required this.isLoadingMore,
     this.isCollection = false,
+    this.isShuffled = false,
   });
 
   /// Tracks already played in this session, most-recent last.
@@ -115,6 +116,9 @@ class AutoplayQueueState {
 
   /// Lista cerrada y circular: nunca agrega recomendaciones.
   final bool isCollection;
+
+  /// Modo aleatorio activo: las pistas siguientes van en orden barajado.
+  final bool isShuffled;
 
   static const AutoplayQueueState empty = AutoplayQueueState(
     played: [],
@@ -152,6 +156,7 @@ class AutoplayQueueState {
     Map<String, ResolvedAudio>? resolved,
     Set<String>? inFlight,
     bool? isLoadingMore,
+    bool? isShuffled,
   }) {
     return AutoplayQueueState(
       played: played ?? this.played,
@@ -163,6 +168,7 @@ class AutoplayQueueState {
       inFlight: inFlight ?? this.inFlight,
       isLoadingMore: isLoadingMore ?? this.isLoadingMore,
       isCollection: isCollection,
+      isShuffled: isShuffled ?? this.isShuffled,
     );
   }
 }
@@ -192,6 +198,10 @@ class NextTrack {
 class AutoplayQueueController extends _$AutoplayQueueController {
   int _queueGeneration = 0;
   int _refillFailures = 0;
+
+  /// El modo aleatorio sigue activo al cambiar de lista durante la sesion.
+  bool _shuffle = false;
+  List<YouTubeSearchSuggestion>? _orderBeforeShuffle;
 
   /// Techo vigente de la cola visible. Sube por pasos cuando el usuario pide
   /// ver mas (scroll hasta el final de la lista).
@@ -263,6 +273,7 @@ class AutoplayQueueController extends _$AutoplayQueueController {
         (song) => song.videoId == selectedId,
       );
       _selectCollectionTrack(index);
+      if (_shuffle) _shuffleRemaining();
       return;
     }
 
@@ -297,7 +308,9 @@ class AutoplayQueueController extends _$AutoplayQueueController {
       resolved: const {},
       inFlight: const {},
       isLoadingMore: false,
+      isShuffled: _shuffle,
     );
+    if (_shuffle) _shuffleRemaining();
 
     _pumpPrefetch();
     unawaited(_startQueueSources(_queueGeneration));
@@ -314,6 +327,7 @@ class AutoplayQueueController extends _$AutoplayQueueController {
       inFlight: state.inFlight,
       isLoadingMore: false,
       isCollection: true,
+      isShuffled: _shuffle,
     );
     _resolveFailed.clear();
     _pumpPrefetch();
@@ -505,7 +519,7 @@ class AutoplayQueueController extends _$AutoplayQueueController {
 
   void clear() {
     _beginNewQueue();
-    state = AutoplayQueueState.empty;
+    state = AutoplayQueueState.empty.copyWith(isShuffled: _shuffle);
   }
 
   void clearUpcoming() {
@@ -525,20 +539,68 @@ class AutoplayQueueController extends _$AutoplayQueueController {
     unawaited(_maintainQueueBuffer());
   }
 
-  /// Baraja aleatoriamente las pistas que faltan por reproducir (Fisher-Yates),
-  /// conservando la pista actual y el historial. Reinicia el prefetch del nuevo
-  /// encabezado de la cola.
-  void shuffleUpcoming() {
-    final upcoming = [...state.upcoming];
-    if (upcoming.length < 2) return;
-    final random = Random();
-    for (var i = upcoming.length - 1; i > 0; i--) {
-      final j = random.nextInt(i + 1);
-      final tmp = upcoming[i];
-      upcoming[i] = upcoming[j];
-      upcoming[j] = tmp;
+  /// Activa o desactiva el modo aleatorio. Al activarlo baraja lo que falta
+  /// por sonar; al desactivarlo vuelve al orden original de la lista.
+  void toggleShuffle() {
+    _shuffle = !_shuffle;
+    if (_shuffle) {
+      _shuffleRemaining();
+    } else {
+      _restoreOrder();
     }
-    state = state.copyWith(upcoming: upcoming);
+  }
+
+  /// Baraja (Fisher-Yates) las pistas pendientes conservando la actual. En
+  /// una lista cerrada entran tambien las ya escuchadas, porque vuelven a
+  /// sonar al dar la vuelta.
+  void _shuffleRemaining() {
+    final collection = state.isCollection;
+    _orderBeforeShuffle = collection ? _collection : state.upcoming;
+    final pending = [if (collection) ...state.played, ...state.upcoming]
+      ..shuffle(Random());
+    state = state.copyWith(
+      played: collection ? const [] : null,
+      upcoming: pending,
+      isShuffled: true,
+    );
+    _afterReorder();
+  }
+
+  void _restoreOrder() {
+    final original = _orderBeforeShuffle;
+    _orderBeforeShuffle = null;
+    if (original == null) {
+      state = state.copyWith(isShuffled: false);
+      return;
+    }
+    if (state.isCollection) {
+      final present = {for (final song in _collection) song.videoId};
+      _collection = [
+        for (final song in original)
+          if (present.contains(song.videoId)) song,
+      ];
+      final index = _collection.indexWhere(
+        (song) => song.videoId == state.current?.videoId,
+      );
+      if (index >= 0) _selectCollectionTrack(index);
+      return;
+    }
+    // Las pistas que el relleno agrego despues de barajar van al final.
+    final pending = {for (final song in state.upcoming) song.videoId};
+    final known = {for (final song in original) song.videoId};
+    state = state.copyWith(
+      upcoming: [
+        for (final song in original)
+          if (pending.contains(song.videoId)) song,
+        for (final song in state.upcoming)
+          if (!known.contains(song.videoId)) song,
+      ],
+      isShuffled: false,
+    );
+    _afterReorder();
+  }
+
+  void _afterReorder() {
     _syncCollectionOrder();
     _pumpPrefetch();
     unawaited(_maintainQueueBuffer());
@@ -568,6 +630,7 @@ class AutoplayQueueController extends _$AutoplayQueueController {
 
   void _beginNewQueue() {
     _collection = const [];
+    _orderBeforeShuffle = null;
     _queueGeneration++;
     _refillFailures = 0;
     _queueTarget = _queueTargetLength;

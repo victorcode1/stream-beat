@@ -268,4 +268,45 @@ abstract class LocaleKeys {
   static const chart_in_country = 'chart_in_country';
   static const chart_now = 'chart_now';
   static const explore_genres = 'explore_genres';
+  static const donation_title = 'donation_title';
+  static const donation_description = 'donation_description';
+  static const donation_button = 'donation_button';
+  static const donation_optional = 'donation_optional';
+  static const donation_open_error = 'donation_open_error';
+  static const yt_account_title = 'yt_account_title';
+  static const yt_account_connect_hint = 'yt_account_connect_hint';
+  static const yt_account_connect = 'yt_account_connect';
+  static const yt_account_disconnect = 'yt_account_disconnect';
+  static const yt_account_dialog_title = 'yt_account_dialog_title';
+  static const yt_account_dialog_steps = 'yt_account_dialog_steps';
+  static const yt_account_dialog_warning = 'yt_account_dialog_warning';
+  static const yt_account_cookie_label = 'yt_account_cookie_label';
+  static const yt_account_invalid_cookie = 'yt_account_invalid_cookie';
+  static const yt_account_rejected = 'yt_account_rejected';
+  static const yt_account_load_error = 'yt_account_load_error';
+  static const yt_account_paste_cookie = 'yt_account_paste_cookie';
+  static const yt_sync_action = 'yt_sync_action';
+  static const yt_sync_subtitle = 'yt_sync_subtitle';
+  static const yt_sync_running = 'yt_sync_running';
+  static const yt_sync_done = 'yt_sync_done';
+  static const yt_sync_failed = 'yt_sync_failed';
+  static const yt_sync_favorites_name = 'yt_sync_favorites_name';
+  static const yt_sync_short = 'yt_sync_short';
+  static const yt_library_title = 'yt_library_title';
+  static const yt_library_empty = 'yt_library_empty';
+  static const yt_account_premium = 'yt_account_premium';
+  static const yt_account_stat_playlists = 'yt_account_stat_playlists';
+  static const yt_account_stat_likes = 'yt_account_stat_likes';
+  static const yt_account_stat_artists = 'yt_account_stat_artists';
+  static const yt_sync_last = 'yt_sync_last';
+  static const yt_sync_never = 'yt_sync_never';
+  static const yt_account_open_channel = 'yt_account_open_channel';
+  static const yt_account_session_expired = 'yt_account_session_expired';
+  static const yt_account_session_expired_hint =
+      'yt_account_session_expired_hint';
+  static const yt_account_sign_in_again = 'yt_account_sign_in_again';
+  static const yt_account_disconnect_confirm_title =
+      'yt_account_disconnect_confirm_title';
+  static const yt_account_disconnect_confirm_body =
+      'yt_account_disconnect_confirm_body';
 }

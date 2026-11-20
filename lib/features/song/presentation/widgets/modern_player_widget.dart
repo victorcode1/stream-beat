@@ -42,6 +42,7 @@ class ModernPlayerWidget extends StatefulWidget {
   final VoidCallback? onNext;
   final bool repeatEnabled;
   final VoidCallback? onToggleRepeat;
+  final bool shuffleEnabled;
   final VoidCallback? onShuffle;
   final double playbackRate;
   final bool normalizeVolume;
@@ -92,6 +93,7 @@ class ModernPlayerWidget extends StatefulWidget {
     this.onNext,
     this.repeatEnabled = false,
     this.onToggleRepeat,
+    this.shuffleEnabled = false,
     this.onShuffle,
     this.playbackRate = 1,
     this.normalizeVolume = false,
@@ -204,6 +206,7 @@ class _ModernPlayerWidgetState extends State<ModernPlayerWidget> {
           onNext: _tracking(widget.onNext, forward: true),
           repeatEnabled: widget.repeatEnabled,
           onToggleRepeat: widget.onToggleRepeat,
+          shuffleEnabled: widget.shuffleEnabled,
           onShuffle: widget.onShuffle,
           trackKey: trackKey,
           forward: _forward,

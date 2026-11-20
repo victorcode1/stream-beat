@@ -25,6 +25,7 @@ class ModernPlayerControls extends StatelessWidget {
   final VoidCallback? onNext;
   final bool repeatEnabled;
   final VoidCallback? onToggleRepeat;
+  final bool shuffleEnabled;
   final VoidCallback? onShuffle;
   final String? title;
   final String? author;
@@ -77,6 +78,7 @@ class ModernPlayerControls extends StatelessWidget {
     this.onNext,
     this.repeatEnabled = false,
     this.onToggleRepeat,
+    this.shuffleEnabled = false,
     this.onShuffle,
     this.title,
     this.author,
@@ -293,14 +295,11 @@ class ModernPlayerControls extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              IconButton(
+              _ModeButton(
                 tooltip: LocaleKeys.shuffle.tr(),
-                icon: const Icon(Icons.shuffle_rounded),
-                iconSize: 26,
+                icon: Icons.shuffle_rounded,
+                active: shuffleEnabled,
                 onPressed: onShuffle,
-                color: onShuffle == null
-                    ? theme.colorScheme.onSurface.withValues(alpha: 0.4)
-                    : theme.colorScheme.onSurface.withValues(alpha: 0.85),
               ),
               IconButton(
                 icon: const Icon(Icons.skip_previous_rounded),
@@ -343,20 +342,13 @@ class ModernPlayerControls extends StatelessWidget {
                     ? theme.colorScheme.onSurface.withValues(alpha: 0.4)
                     : theme.colorScheme.onSurface.withValues(alpha: 0.85),
               ),
-              IconButton(
+              _ModeButton(
                 tooltip: LocaleKeys.repeat_song.tr(),
-                icon: Icon(
-                  repeatEnabled
-                      ? Icons.repeat_one_rounded
-                      : Icons.repeat_rounded,
-                ),
-                iconSize: 26,
+                icon: repeatEnabled
+                    ? Icons.repeat_one_rounded
+                    : Icons.repeat_rounded,
+                active: repeatEnabled,
                 onPressed: onToggleRepeat,
-                color: repeatEnabled
-                    ? theme.colorScheme.primary
-                    : onToggleRepeat == null
-                    ? theme.colorScheme.onSurface.withValues(alpha: 0.4)
-                    : theme.colorScheme.onSurface.withValues(alpha: 0.85),
               ),
             ],
           ),
@@ -881,6 +873,67 @@ class _SecondaryControls extends StatelessWidget {
           ],
         ),
       ],
+    );
+  }
+}
+
+/// Boton de modo (aleatorio, repetir). Encendido se pinta con el color de
+/// acento, fondo suave y un punto debajo; apagado queda atenuado, para que el
+/// estado se distinga de un vistazo.
+class _ModeButton extends StatelessWidget {
+  const _ModeButton({
+    required this.tooltip,
+    required this.icon,
+    required this.active,
+    required this.onPressed,
+  });
+
+  final String tooltip;
+  final IconData icon;
+  final bool active;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final color = active
+        ? colors.primary
+        : colors.onSurface.withValues(alpha: onPressed == null ? 0.3 : 0.6);
+    return Semantics(
+      toggled: active,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: [
+          IconButton(
+            tooltip: tooltip,
+            icon: Icon(icon),
+            iconSize: 26,
+            onPressed: onPressed,
+            color: color,
+            style: IconButton.styleFrom(
+              backgroundColor: active
+                  ? colors.primary.withValues(alpha: 0.16)
+                  : Colors.transparent,
+            ),
+          ),
+          Positioned(
+            bottom: -6,
+            child: AnimatedOpacity(
+              opacity: active ? 1 : 0,
+              duration: const Duration(milliseconds: 150),
+              child: Container(
+                width: 5,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: colors.primary,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

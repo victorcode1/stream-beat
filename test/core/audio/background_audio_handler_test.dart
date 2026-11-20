@@ -112,6 +112,29 @@ void main() {
     },
   );
 
+  test('leaving the fade-out window restores audible volume', () async {
+    final player = TestPlayer();
+    final handler = FlowAudioHandler(audioPlayer: player);
+    handler.prepareNextTrack = (_) async => null;
+    await handler.playUrl(
+      url: 'https://example.com/a.mp3',
+      id: 'a',
+      title: 'A',
+      artist: 'Artist',
+      canonicalDuration: const Duration(seconds: 10),
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 800));
+    player.positions.add(const Duration(seconds: 9));
+    await Future<void>.delayed(const Duration(milliseconds: 1200));
+    expect(player.volume, 0);
+    // El audio sigue mas alla de la duracion nativa estimada.
+    player.positions.add(const Duration(seconds: 11));
+    await Future<void>.delayed(Duration.zero);
+    expect(player.volume, 1);
+    await handler.dispose();
+    await player.positions.close();
+  });
+
   test('background entry cancels a fade and restores audible volume', () async {
     final player = TestPlayer();
     final handler = FlowAudioHandler(audioPlayer: player);

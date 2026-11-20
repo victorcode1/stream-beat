@@ -506,14 +506,24 @@ class FlowAudioHandler extends BaseAudioHandler with SeekHandler {
   }
 
   void _maybeStartFadeOut(Duration position) {
-    if (!_useFades || _fadeOutStarted) return;
-    if (!_hasTrustedDuration || _duration <= _fadeOutDuration) return;
     // La duracion del catalogo puede ser menor que el audio real.
     // Solo el reproductor nativo conoce cuando va a terminar esta fuente.
     final nativeDuration = _player.duration;
-    if (nativeDuration == null) return;
-    final remaining = nativeDuration - position;
-    if (remaining <= _fadeOutDuration && remaining > Duration.zero) {
+    final remaining = nativeDuration == null ? null : nativeDuration - position;
+    final inFadeWindow =
+        remaining != null &&
+        remaining <= _fadeOutDuration &&
+        remaining > Duration.zero;
+    if (_fadeOutStarted && !inFadeWindow) {
+      // Se salio de la ventana del fundido (seek hacia atras, o la duracion
+      // nativa estaba mal estimada y el audio sigue): sin esto la cancion
+      // continuaba en silencio con el volumen en 0.
+      _cancelFadeOut();
+      return;
+    }
+    if (!_useFades || _fadeOutStarted) return;
+    if (!_hasTrustedDuration || _duration <= _fadeOutDuration) return;
+    if (inFadeWindow) {
       _fadeOutStarted = true;
       unawaited(_runFade(from: 1, to: 0, total: remaining));
     }
@@ -535,6 +545,12 @@ class FlowAudioHandler extends BaseAudioHandler with SeekHandler {
       final volume = (from + (to - from) * (i / steps)).clamp(0.0, 1.0);
       await _player.setVolume(volume);
     }
+  }
+
+  void _cancelFadeOut() {
+    _fadeGeneration++;
+    _fadeOutStarted = false;
+    unawaited(_player.setVolume(1));
   }
 
   void _startFadeIn() {
@@ -672,6 +688,7 @@ class FlowAudioHandler extends BaseAudioHandler with SeekHandler {
 
   @override
   Future<void> seek(Duration position) async {
+    if (_fadeOutStarted) _cancelFadeOut();
     await _player.seek(position);
     _broadcastPlaybackState();
   }

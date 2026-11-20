@@ -192,8 +192,9 @@ class _ScreenPlayState extends ConsumerState<ScreenPlay>
                   : null,
               repeatEnabled: repeatEnabled,
               onToggleRepeat: repeatNotifier.toggle,
-              onShuffle: autoplayQueue.upcoming.length > 1
-                  ? autoplayNotifier.shuffleUpcoming
+              shuffleEnabled: autoplayQueue.isShuffled,
+              onShuffle: autoplayQueue.current != null
+                  ? autoplayNotifier.toggleShuffle
                   : null,
               playbackRate: audioTools.playbackRate,
               normalizeVolume: audioTools.normalizeVolume,
