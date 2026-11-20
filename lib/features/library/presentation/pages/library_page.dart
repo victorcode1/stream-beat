@@ -22,6 +22,8 @@ import 'package:flow_music/features/radio/presentation/controllers/radio_playlis
 import 'package:flow_music/features/radio/presentation/utils/play_radio_station.dart';
 import 'package:flow_music/features/radio/presentation/widgets/radio_playlist_actions.dart';
 import 'package:flow_music/features/radio/presentation/widgets/radio_station_tile.dart';
+import 'package:flow_music/features/youtube_account/presentation/widgets/youtube_music_library_section.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
@@ -217,6 +219,9 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
                         ),
                       ),
                     ),
+                  // Cuenta de YouTube Music: el navegador no deja enviar la
+                  // cookie de sesion, asi que en web no se ofrece.
+                  if (!kIsWeb) const YouTubeMusicLibrarySection(index: 5),
                   const SizedBox(height: 28),
                   LibrarySectionHeader(
                     title: LocaleKeys.favorite_stations.tr(),

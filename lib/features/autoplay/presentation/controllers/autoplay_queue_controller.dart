@@ -8,6 +8,8 @@ import 'package:flow_music/features/autoplay/data/resolved_audio.dart';
 import 'package:flow_music/features/search/data/models/youtube_search_suggestion.dart';
 import 'package:flow_music/features/search/data/repositories/song_title_normalizer.dart';
 import 'package:flow_music/features/search/data/repositories/youtube_suggestions_repository.dart';
+import 'package:flow_music/features/youtube_account/data/youtube_music_account_repository.dart';
+import 'package:flow_music/features/youtube_account/presentation/controllers/youtube_music_account_controller.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -68,15 +70,41 @@ final autoplayRelatedLoaderProvider = Provider<AutoplayRelatedLoader>((ref) {
   return fetchRelatedTracks;
 });
 
+/// Con la cuenta de YouTube Music conectada, la radio sale de la cuenta (la
+/// misma que arma YouTube Music con tus gustos); si falla, del mix anonimo.
 final autoplayMixLoaderProvider = Provider<AutoplayMixLoader>((ref) {
-  return fetchMixPlaylist;
+  final account = ref.watch(youtubeMusicAccountRepositoryProvider);
+  if (account == null) return fetchMixPlaylist;
+  return (seed) async {
+    if (seed.videoId.isNotEmpty) {
+      try {
+        final page = await account.fetchRadio(seed.videoId);
+        if (!page.isEmpty) return page;
+      } catch (error) {
+        debugPrint('Account radio failed for ${seed.videoId}: $error');
+      }
+    }
+    return fetchMixPlaylist(seed);
+  };
 });
 
 final autoplayMixPageLoaderProvider = Provider<AutoplayMixPageLoader>((ref) {
-  return (playlistId, nextPageToken) => fetchMixPlaylistPage(
-    playlistId: playlistId,
-    nextPageToken: nextPageToken,
-  );
+  final account = ref.watch(youtubeMusicAccountRepositoryProvider);
+  return (playlistId, nextPageToken) async {
+    if (account == null || !playlistId.startsWith(radioPlaylistPrefix)) {
+      return fetchMixPlaylistPage(
+        playlistId: playlistId,
+        nextPageToken: nextPageToken,
+      );
+    }
+    try {
+      return await account.fetchRadioPage(playlistId, nextPageToken);
+    } catch (error) {
+      // Sin pagina el controlador abre otra radio con la siguiente semilla.
+      debugPrint('Account radio page failed for $playlistId: $error');
+      return MixPlaylistPage.empty;
+    }
+  };
 });
 
 final autoplayAudioResolverProvider = Provider<AutoplayAudioResolver>((ref) {

@@ -2,6 +2,7 @@ import 'package:flow_music/features/search/data/models/youtube_search_suggestion
 import 'package:flow_music/features/search/data/repositories/youtube_suggestions_repository.dart';
 import 'package:flow_music/features/song/presentation/controllers/song_controller.dart';
 import 'package:flow_music/features/settings/presentation/controllers/default_playback_mode_controller.dart';
+import 'package:flow_music/features/youtube_account/presentation/controllers/youtube_music_account_controller.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'list_search_result.g.dart';
@@ -17,5 +18,6 @@ Future<List<YouTubeSearchSuggestion>> searchResultData(
   return searchSongsAndVideos(
     query,
     includeMusic: playbackMode == PlaybackMode.audio,
+    session: ref.watch(youtubeSessionHeadersProvider),
   );
 }

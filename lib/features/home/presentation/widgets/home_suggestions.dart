@@ -9,6 +9,9 @@ import 'package:flow_music/features/home/presentation/providers/home_suggestions
 import 'package:flow_music/features/home/presentation/widgets/home_mobile_sections.dart';
 import 'package:flow_music/features/search/data/models/youtube_search_suggestion.dart';
 import 'package:flow_music/features/settings/presentation/controllers/autoplay_enabled_controller.dart';
+import 'package:flow_music/features/youtube_account/presentation/controllers/youtube_music_account_controller.dart';
+import 'package:flow_music/features/youtube_account/presentation/widgets/youtube_music_home_shelves.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -162,7 +165,10 @@ class HomeSuggestions extends ConsumerWidget {
                 .enqueue(suggestions, selectedIndex);
             viewCtr.listen(suggestions[selectedIndex]);
           },
-          onRefresh: () => ref.read(homeSuggestionsProvider.notifier).refresh(),
+          onRefresh: () {
+            ref.read(homeSuggestionsProvider.notifier).refresh();
+            ref.invalidate(youtubeMusicHomeProvider);
+          },
         );
       },
       error: (error, stack) => Center(
@@ -374,6 +380,8 @@ class _SuggestionsGrid extends StatelessWidget {
               ),
             ),
           ],
+          // Inicio de la cuenta de YouTube Music conectada (no existe en web).
+          if (!kIsWeb) YouTubeMusicHomeShelves(firstIndex: sectionIndex),
           if (chart.isNotEmpty) ...[
             header(chartTitle),
             SliverToBoxAdapter(

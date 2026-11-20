@@ -30,7 +30,14 @@ const _minUserResultDuration = Duration(seconds: 30);
 const _searchTimeout = Duration(seconds: 10);
 
 /// Filtro «Canciones» de YouTube Music.
-const _musicSongsFilter = 'EgWKAQIIAWoKEAkQBRAKEAMQBA%3D%3D';
+const youtubeMusicSongsFilter = 'EgWKAQIIAWoKEAkQBRAKEAMQBA%3D%3D';
+
+/// Encabezados de la sesion de YouTube conectada para el sitio [origin]
+/// (`https://music.youtube.com` o `https://www.youtube.com`).
+typedef YouTubeSessionHeaders = Map<String, String> Function(String origin);
+
+const _musicOrigin = 'https://music.youtube.com';
+const _youtubeOrigin = 'https://www.youtube.com';
 
 /// Busqueda del usuario: lo que escribe, tal cual.
 ///
@@ -40,9 +47,14 @@ const _musicSongsFilter = 'EgWKAQIIAWoKEAkQBRAKEAMQBA%3D%3D';
 /// pagina HTML de resultados (~300 KB) con «cancion» agregado a la consulta y
 /// se descartaba lo que durara mas de 12 minutos, asi que muchas cosas que
 /// existen en YouTube no aparecian. En modo video solo usa YouTube.
+///
+/// Con [session] (cuenta conectada) las dos busquedas van con la sesion, asi
+/// YouTube ordena los resultados segun los gustos de la cuenta; si una falla
+/// con sesion se repite sin ella.
 Future<List<YouTubeSearchSuggestion>> searchSongsAndVideos(
   String query, {
   required bool includeMusic,
+  YouTubeSessionHeaders? session,
 }) async {
   final trimmedQuery = query.trim();
   if (trimmedQuery.isEmpty) return const [];
@@ -50,10 +62,16 @@ Future<List<YouTubeSearchSuggestion>> searchSongsAndVideos(
 
   final results = await Future.wait([
     if (includeMusic)
-      _guardSearch('YouTube Music', () => _fetchMusicSongs(trimmedQuery))
+      _guardSearch(
+        'YouTube Music',
+        () => _fetchMusicSongs(trimmedQuery, session),
+      )
     else
       Future.value(const <YouTubeSearchSuggestion>[]),
-    _guardSearch('YouTube API', () => _fetchYoutubeApiResults(trimmedQuery)),
+    _guardSearch(
+      'YouTube API',
+      () => _fetchYoutubeApiResults(trimmedQuery, session),
+    ),
   ]);
 
   final merged = mergeSearchResults(results, limit: _maxUserResults);
@@ -96,7 +114,10 @@ Future<List<YouTubeSearchSuggestion>> _guardSearch(
   }
 }
 
-Future<List<YouTubeSearchSuggestion>> _fetchMusicSongs(String query) async {
+Future<List<YouTubeSearchSuggestion>> _fetchMusicSongs(
+  String query,
+  YouTubeSessionHeaders? session,
+) async {
   final data = await _postInnertube(
     Uri.https('music.youtube.com', '/youtubei/v1/search', {
       'prettyPrint': 'false',
@@ -110,14 +131,17 @@ Future<List<YouTubeSearchSuggestion>> _fetchMusicSongs(String query) async {
         },
       },
       'query': query,
-      'params': _musicSongsFilter,
+      'params': youtubeMusicSongsFilter,
     },
+    session: session,
+    origin: _musicOrigin,
   );
   return _musicSearchParser.parseSuggestions(data, limit: _maxMusicResults);
 }
 
 Future<List<YouTubeSearchSuggestion>> _fetchYoutubeApiResults(
   String query,
+  YouTubeSessionHeaders? session,
 ) async {
   final data = await _postInnertube(
     Uri.https(_youtubeSearchHost, '/youtubei/v1/search', {
@@ -133,6 +157,8 @@ Future<List<YouTubeSearchSuggestion>> _fetchYoutubeApiResults(
       },
       'query': query,
     },
+    session: session,
+    origin: _youtubeOrigin,
   );
   return _searchPageParser.parseSuggestionsFromData(
     data,
@@ -142,13 +168,34 @@ Future<List<YouTubeSearchSuggestion>> _fetchYoutubeApiResults(
   );
 }
 
-Future<Object?> _postInnertube(Uri uri, Map<String, Object?> body) async {
+Future<Object?> _postInnertube(
+  Uri uri,
+  Map<String, Object?> body, {
+  YouTubeSessionHeaders? session,
+  required String origin,
+}) async {
+  if (session != null) {
+    try {
+      return await _postInnertubeWith(uri, body, session(origin));
+    } catch (error) {
+      debugPrint('Signed-in search failed, retrying signed out: $error');
+    }
+  }
+  return _postInnertubeWith(uri, body, const {});
+}
+
+Future<Object?> _postInnertubeWith(
+  Uri uri,
+  Map<String, Object?> body,
+  Map<String, String> sessionHeaders,
+) async {
   final response = await http.post(
     uri,
-    headers: const {
+    headers: {
       'content-type': 'application/json',
       'accept-language': 'es-419,es;q=0.9,en;q=0.8',
       'user-agent': _userAgent,
+      ...sessionHeaders,
     },
     body: jsonEncode(body),
   );

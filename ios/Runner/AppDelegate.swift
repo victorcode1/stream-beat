@@ -1,14 +1,19 @@
 import Flutter
 import UIKit
+import WebKit
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
   private var backgroundTaskChannel: BackgroundTaskChannel?
+  private var webCookiesChannel: WebCookiesChannel?
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "BackgroundTaskChannel") {
       backgroundTaskChannel = BackgroundTaskChannel(messenger: registrar.messenger())
+    }
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "WebCookiesChannel") {
+      webCookiesChannel = WebCookiesChannel(messenger: registrar.messenger())
     }
   }
 }
@@ -56,4 +61,40 @@ final class BackgroundTaskChannel {
     UIApplication.shared.endBackgroundTask(taskId)
     taskId = .invalid
   }
+}
+
+/// Lee las cookies que dejo el inicio de sesion en la vista web, incluidas las
+/// HttpOnly que JavaScript no ve. La vista web usa el almacen por defecto.
+final class WebCookiesChannel {
+  private let channel: FlutterMethodChannel
+
+  init(messenger: FlutterBinaryMessenger) {
+    channel = FlutterMethodChannel(
+      name: "streambeat/web_cookies",
+      binaryMessenger: messenger
+    )
+    channel.setMethodCallHandler { call, result in
+      guard call.method == "cookieHeader",
+        let domain = call.arguments as? String
+      else {
+        result(FlutterMethodNotImplemented)
+        return
+      }
+      WKWebsiteDataStore.default().httpCookieStore.getAllCookies { cookies in
+        result(webCookieHeader(cookies, domain: domain))
+      }
+    }
+  }
+}
+
+/// `nombre=valor; ...` de las cookies de [domain] y sus subdominios.
+func webCookieHeader(_ cookies: [HTTPCookie], domain: String) -> String {
+  cookies
+    .filter { cookie in
+      let cookieDomain = cookie.domain.hasPrefix(".")
+        ? String(cookie.domain.dropFirst()) : cookie.domain
+      return cookieDomain == domain || cookieDomain.hasSuffix("." + domain)
+    }
+    .map { "\($0.name)=\($0.value)" }
+    .joined(separator: "; ")
 }

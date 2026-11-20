@@ -7,6 +7,7 @@ import 'package:flow_music/features/home/presentation/controllers/home_app_bar_v
 import 'package:flow_music/features/home/presentation/controllers/now_playing_details_view_state.dart';
 import 'package:flow_music/features/home/presentation/widgets/home_app_bar_title.dart';
 import 'package:flow_music/features/song/presentation/controllers/song_controller.dart';
+import 'package:flow_music/features/youtube_account/presentation/widgets/youtube_music_account_button.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -106,9 +107,20 @@ class _AppAbarMainState extends ConsumerState<AppAbarMain> {
                 item: detailsState.item,
               ),
             )
-          : HomeAppBarTitle(
-              titleText: viewState.titleText,
-              hasNowPlaying: viewState.hasNowPlaying,
+          : Row(
+              children: [
+                // Cuenta de YouTube Music junto al titulo (no existe en web).
+                if (!kIsWeb) ...[
+                  const YouTubeMusicAccountButton(),
+                  const SizedBox(width: 12),
+                ],
+                Flexible(
+                  child: HomeAppBarTitle(
+                    titleText: viewState.titleText,
+                    hasNowPlaying: viewState.hasNowPlaying,
+                  ),
+                ),
+              ],
             ),
       actions: [
         if (viewState.playlistItem != null &&

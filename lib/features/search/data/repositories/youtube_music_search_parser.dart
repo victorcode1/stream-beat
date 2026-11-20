@@ -57,9 +57,14 @@ class YouTubeMusicSearchParser {
     final details = columns.length > 1
         ? columns[1].split(' • ').map((part) => part.trim()).toList()
         : const <String>[];
-    final duration =
-        details.isNotEmpty && _durationPattern.hasMatch(details.last)
-        ? _parseDuration(details.last)
+    // En la busqueda la duracion va al final de la segunda columna; en las
+    // listas de reproduccion va aparte, en la columna fija.
+    final fixed = _readFixedColumn(item['fixedColumns']);
+    final durationText = details.isNotEmpty ? details.last : fixed;
+    final duration = _durationPattern.hasMatch(durationText)
+        ? _parseDuration(durationText)
+        : _durationPattern.hasMatch(fixed)
+        ? _parseDuration(fixed)
         : null;
 
     return YouTubeSearchSuggestion(
@@ -89,6 +94,16 @@ class YouTubeMusicSearchParser {
               : null,
         ),
     ];
+  }
+
+  String _readFixedColumn(Object? fixedColumns) {
+    if (fixedColumns is! List || fixedColumns.isEmpty) return '';
+    final column = fixedColumns.first;
+    return _readRuns(
+      column is Map
+          ? column['musicResponsiveListItemFixedColumnRenderer']
+          : null,
+    );
   }
 
   String _readRuns(Object? renderer) {
