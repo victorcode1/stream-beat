@@ -16,32 +16,38 @@ class FavoritePlaybackController {
   final Ref ref;
 
   Future<void> play(List<FavoriteSong> songs, int index) async {
-    if (index < 0 || index >= songs.length) return;
-    final song = songs[index];
+    final song = queue(songs, index);
+    if (song == null) return;
+    await ref.read(songController).autoPlay(id: song.videoId);
+  }
+
+  /// Deja la lista en cola centrada en [index] y precarga sus datos, sin
+  /// arrancar el audio: lo arranca la vista de la cancion al abrirse.
+  YouTubeSearchSuggestion? queue(List<FavoriteSong> songs, int index) {
+    if (index < 0 || index >= songs.length) return null;
+    final suggestions = songs
+        .map(
+          (song) => YouTubeSearchSuggestion(
+            videoId: song.videoId,
+            displayText: song.title,
+            channelTitle: song.author,
+            thumbnailUrl: song.thumbnailUrl,
+          ),
+        )
+        .toList(growable: false);
+    final song = suggestions[index];
     ref
         .read(autoplayQueueControllerProvider.notifier)
-        .enqueue(
-          songs
-              .map(
-                (song) => YouTubeSearchSuggestion(
-                  videoId: song.videoId,
-                  displayText: song.title,
-                  channelTitle: song.author,
-                  thumbnailUrl: song.thumbnailUrl,
-                ),
-              )
-              .toList(growable: false),
-          index,
-          collection: true,
+        .enqueue(suggestions, index, collection: true);
+    ref
+        .read(songController)
+        .preloadMetadata(
+          videoId: song.videoId,
+          title: song.displayText,
+          author: song.channelTitle,
+          thumbnailUrl: song.thumbnailUrl,
         );
-    final controller = ref.read(songController);
-    controller.preloadMetadata(
-      videoId: song.videoId,
-      title: song.title,
-      author: song.author,
-      thumbnailUrl: song.thumbnailUrl,
-    );
-    await controller.autoPlay(id: song.videoId);
+    return song;
   }
 
   /// Pausa o reanuda la cancion activa sin reiniciarla.

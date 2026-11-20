@@ -54,7 +54,8 @@ class SuggestedListSearch extends ConsumerWidget {
           if (playInPlace) {
             final playback = ref.read(artistPlaybackControllerProvider);
             unawaited(playback.play(results, index, isPlaying: isPlaying));
-            onSelect?.call(suggestion);
+            // La que ya suena solo se pausa o reanuda: no hay nada que abrir.
+            if (suggestion.videoId != currentId) onSelect?.call(suggestion);
             return;
           }
           if (ref.read(autoplayEnabledControllerProvider)) {

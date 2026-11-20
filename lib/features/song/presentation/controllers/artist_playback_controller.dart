@@ -37,4 +37,23 @@ class ArtistPlaybackController {
     );
     await controller.autoPlay(id: song.videoId, knownDuration: song.duration);
   }
+
+  /// Deja la lista en cola centrada en [index] y precarga sus datos, sin
+  /// arrancar el audio: lo arranca la vista de la cancion al abrirse.
+  void queue(List<YouTubeSearchSuggestion> songs, int index) {
+    if (index < 0 || index >= songs.length) return;
+    final song = songs[index];
+    if (song.videoId.isEmpty) return;
+    ref
+        .read(autoplayQueueControllerProvider.notifier)
+        .enqueue(songs, index, collection: true);
+    ref
+        .read(songController)
+        .preloadMetadata(
+          videoId: song.videoId,
+          title: song.displayText,
+          author: song.channelTitle,
+          thumbnailUrl: song.thumbnailUrl,
+        );
+  }
 }

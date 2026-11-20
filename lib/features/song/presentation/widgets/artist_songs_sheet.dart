@@ -28,7 +28,15 @@ Future<void> showArtistSongs(BuildContext context, String artist) async {
             ),
           ),
           Expanded(
-            child: SuggestedListSearch(searchQuery: query, playInPlace: true),
+            // Al elegir otra cancion se cierra la hoja (y la pagina de un
+            // archivo descargado, si se abrio desde ahi) para ver la vista de
+            // la cancion que empieza a sonar.
+            child: SuggestedListSearch(
+              searchQuery: query,
+              playInPlace: true,
+              onSelect: (_) =>
+                  Navigator.of(sheetContext).popUntil((route) => route.isFirst),
+            ),
           ),
         ],
       ),

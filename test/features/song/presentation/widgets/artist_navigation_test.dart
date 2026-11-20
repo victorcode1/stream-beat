@@ -97,7 +97,7 @@ void main() {
   );
 
   testWidgets(
-    'artist selection stays visible and Next plays the following artist song',
+    'choosing an artist song closes the sheet and Next follows the list',
     (tester) async {
       late TestSongController controller;
       await tester.pumpWidget(
@@ -127,7 +127,8 @@ void main() {
       await tester.tap(find.text('Another song'));
       await tester.pumpAndSettle();
       expect(controller.selections, ['another']);
-      expect(find.text('Another song'), findsOneWidget);
+      // La hoja se cierra para dejar ver la vista de la cancion.
+      expect(find.text('Another song'), findsNothing);
       final container = ProviderScope.containerOf(
         tester.element(find.byType(ArtistNameButton)),
       );
@@ -139,10 +140,16 @@ void main() {
       await tester.pumpAndSettle();
       expect(controller.selections, ['another', 'following']);
       expect(controller.currentVideoId, 'following');
-      expect(find.text('Following song'), findsOneWidget);
-      final following = tester.getSemantics(find.text('Following song'));
+      await container.read(mainAppControllerProvider).handleSkipToNext();
+      await tester.pumpAndSettle();
+      expect(controller.selections, ['another', 'following', 'another']);
+      expect(controller.currentVideoId, 'another');
+
+      // Al volver a abrir la hoja, la que suena aparece marcada.
+      await tester.tap(find.text('Artist'));
+      await tester.pumpAndSettle();
       expect(
-        following,
+        tester.getSemantics(find.text('Another song')),
         matchesSemantics(
           isSelected: true,
           hasSelectedState: true,
@@ -150,13 +157,9 @@ void main() {
           isFocusable: true,
           hasFocusAction: true,
           hasTapAction: true,
-          label: 'Following song\nArtist',
+          label: 'Another song\nArtist',
         ),
       );
-      await container.read(mainAppControllerProvider).handleSkipToNext();
-      await tester.pumpAndSettle();
-      expect(controller.selections, ['another', 'following', 'another']);
-      expect(controller.currentVideoId, 'another');
     },
   );
 
